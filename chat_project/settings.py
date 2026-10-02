@@ -129,3 +129,24 @@ MAILERS = {
         'BACKEND': 'django.core.mail.backends.console.EmailBackend',
     },
 }
+
+
+# Channel Layers (Inter-process and WebSocket group communication)
+# https://channels.readthedocs.io/en/latest/topics/channel_layers.html
+
+# LOCAL DEVELOPMENT: In-memory layer (runs natively on Windows without Redis)
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels.layers.InMemoryChannelLayer",
+    },
+}
+
+# PRODUCTION: Redis layer (uncomment when deploying to Oracle VM in Phase 7)
+# CHANNEL_LAYERS = {
+#     "default": {
+#         "BACKEND": "channels_redis.core.RedisChannelLayer",
+#         "CONFIG": {
+#             "hosts": [("127.0.0.1", 6379)],
+#         },
+#     },
+# }
