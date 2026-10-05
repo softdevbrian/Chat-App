@@ -133,19 +133,32 @@
             setup() {
                 const roomName = JSON.parse(document.getElementById('room-name').textContent);
                 const username = ref(sessionStorage.getItem('chat_username') || '');
-                const messages = ref([]);
+                const storageKey = `chat_history_${roomName}`;
+                
+                // Restore chat history from sessionStorage if available
+                const initialMessages = () => {
+                    try {
+                        const saved = sessionStorage.getItem(storageKey);
+                        return saved ? JSON.parse(saved) : [];
+                    } catch (e) {
+                        return [];
+                    }
+                };
+                const messages = ref(initialMessages());
                 const onlineUsers = ref([]);
                 const newMessage = ref('');
                 const connectionStatus = ref('connecting'); // 'connecting' | 'connected' | 'disconnected'
                 const messagesContainer = ref(null);
                 const inputRef = ref(null);
                 let socket = null;
+                let reconnectTimer = null;
+                let isIntentionallyClosed = false;
 
                 const statusText = computed(() => {
                     switch (connectionStatus.value) {
                         case 'connected': return 'Connected';
                         case 'connecting': return 'Connecting...';
-                        case 'disconnected': return 'Disconnected';
+                        case 'disconnected': return 'Reconnecting...';
                         default: return '';
                     }
                 });
@@ -157,7 +170,27 @@
                     }
                 };
 
+                const saveMessages = () => {
+                    try {
+                        // Limit stored messages to last 100
+                        const toSave = messages.value.slice(-100);
+                        sessionStorage.setItem(storageKey, JSON.stringify(toSave));
+                    } catch (e) {}
+                };
+
+                const scheduleReconnect = () => {
+                    if (isIntentionallyClosed) return;
+                    if (!reconnectTimer) {
+                        reconnectTimer = setTimeout(() => {
+                            reconnectTimer = null;
+                            connectWebSocket();
+                        }, 2000);
+                    }
+                };
+
                 const connectWebSocket = () => {
+                    if (isIntentionallyClosed) return;
+
                     // Prompt for username if opened directly via URL without going through lobby
                     if (!username.value) {
                         let enteredName = prompt('Enter your username:');
@@ -173,10 +206,25 @@
                     const wsUrl = `${wsScheme}${window.location.host}/ws/chat/${encodeURIComponent(roomName)}/`;
 
                     connectionStatus.value = 'connecting';
+                    
+                    try {
+                        if (socket) {
+                            socket.onopen = null;
+                            socket.onmessage = null;
+                            socket.onclose = null;
+                            socket.onerror = null;
+                            socket.close();
+                        }
+                    } catch (e) {}
+
                     socket = new WebSocket(wsUrl);
 
                     socket.onopen = () => {
                         connectionStatus.value = 'connected';
+                        if (reconnectTimer) {
+                            clearTimeout(reconnectTimer);
+                            reconnectTimer = null;
+                        }
                         if (inputRef.value) inputRef.value.focus();
 
                         // Register username immediately with the server
@@ -194,21 +242,22 @@
                                 // Full initial user list sync
                                 onlineUsers.value = data.users;
                             } else if (data.type === 'user_joined') {
-                                // User joined room
                                 onlineUsers.value = data.users;
                                 messages.value.push(data);
+                                saveMessages();
                                 scrollToBottom();
                             } else if (data.type === 'user_left') {
-                                // User left room
                                 onlineUsers.value = data.users;
                                 messages.value.push(data);
+                                saveMessages();
                                 scrollToBottom();
                             } else if (data.type === 'chat_message') {
-                                // Chat message
                                 messages.value.push(data);
+                                saveMessages();
                                 scrollToBottom();
                             } else if (data.type === 'connection_established') {
                                 messages.value.push(data);
+                                saveMessages();
                                 scrollToBottom();
                             }
                         } catch (err) {
@@ -217,12 +266,18 @@
                     };
 
                     socket.onclose = () => {
-                        connectionStatus.value = 'disconnected';
+                        if (!isIntentionallyClosed) {
+                            connectionStatus.value = 'disconnected';
+                            scheduleReconnect();
+                        }
                     };
 
                     socket.onerror = (err) => {
                         console.error('WebSocket encountered an error:', err);
-                        connectionStatus.value = 'disconnected';
+                        if (!isIntentionallyClosed) {
+                            connectionStatus.value = 'disconnected';
+                            scheduleReconnect();
+                        }
                     };
                 };
 
@@ -242,14 +297,20 @@
                 };
 
                 const leaveRoom = () => {
+                    isIntentionallyClosed = true;
+                    if (reconnectTimer) clearTimeout(reconnectTimer);
                     if (socket) socket.close();
+                    sessionStorage.removeItem(storageKey);
                 };
 
                 onMounted(() => {
                     connectWebSocket();
+                    scrollToBottom();
                 });
 
                 onBeforeUnmount(() => {
+                    isIntentionallyClosed = true;
+                    if (reconnectTimer) clearTimeout(reconnectTimer);
                     if (socket) socket.close();
                 });
 
