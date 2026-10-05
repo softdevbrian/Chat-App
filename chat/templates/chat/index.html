@@ -1,0 +1,113 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-Time Chat | Lobby</title>
+    <link rel="stylesheet" href="{% static 'chat/style.css' %}">
+    <!-- Vue 3 via CDN -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+</head>
+<body>
+    <div id="app">
+        <div class="lobby-card">
+            <div class="lobby-header">
+                <h1>⚡ Tuko Chat</h1>
+                <p>Real-time multi-room WebSocket chat</p>
+            </div>
+
+            {% verbatim %}
+            <div v-if="errorMessage" class="error-banner">
+                {{ errorMessage }}
+            </div>
+            {% endverbatim %}
+
+            <form @submit.prevent="joinRoom">
+                <div class="form-group">
+                    <label for="username">Your Username</label>
+                    <input 
+                        id="username" 
+                        type="text" 
+                        class="form-input" 
+                        v-model.trim="username" 
+                        placeholder="e.g. Brian, Player1" 
+                        maxlength="20"
+                        autofocus
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="room">Room Name</label>
+                    <input 
+                        id="room" 
+                        type="text" 
+                        class="form-input" 
+                        v-model.trim="roomName" 
+                        placeholder="e.g. general, lounge, game1" 
+                        maxlength="30"
+                    >
+                </div>
+
+                <button type="submit" class="btn-primary">
+                    Join Room &rarr;
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const { createApp, ref, onMounted } = Vue;
+
+        createApp({
+            setup() {
+                const username = ref('');
+                const roomName = ref('');
+                const errorMessage = ref('');
+
+                onMounted(() => {
+                    // Pre-fill previously used username if saved in browser
+                    const savedUser = sessionStorage.getItem('chat_username');
+                    if (savedUser) {
+                        username.value = savedUser;
+                    }
+                });
+
+                const joinRoom = () => {
+                    errorMessage.value = '';
+
+                    if (!username.value) {
+                        errorMessage.value = 'Please enter a username.';
+                        return;
+                    }
+
+                    if (!roomName.value) {
+                        errorMessage.value = 'Please enter a room name.';
+                        return;
+                    }
+
+                    // Enforce alphanumeric room names (safe for Channels regex)
+                    const cleanRoom = roomName.value.replace(/[^a-zA-Z0-9_]/g, '');
+                    if (!cleanRoom) {
+                        errorMessage.value = 'Room name must contain letters or numbers.';
+                        return;
+                    }
+
+                    // Save username to sessionStorage for room.html
+                    sessionStorage.setItem('chat_username', username.value);
+
+                    // Navigate to the room URL
+                    window.location.href = `/chat/${encodeURIComponent(cleanRoom)}/`;
+                };
+
+                return {
+                    username,
+                    roomName,
+                    errorMessage,
+                    joinRoom
+                };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>

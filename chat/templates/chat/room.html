@@ -1,0 +1,207 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Room | {{ room_name }}</title>
+    <link rel="stylesheet" href="{% static 'chat/style.css' %}">
+    <!-- Vue 3 via CDN -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    {{ room_name|json_script:"room-name" }}
+</head>
+<body>
+    <div id="app">
+        <div class="chat-container">
+            <!-- Header -->
+            <header class="chat-header">
+                <div class="room-info">
+                    <h2># {{ room_name }}</h2>
+                    {% verbatim %}
+                    <span class="user-tag">Chatting as: <strong>{{ username }}</strong></span>
+                    {% endverbatim %}
+                </div>
+
+                {% verbatim %}
+                <div style="display: flex; align-items: center;">
+                    <div :class="['status-pill', `status-${connectionStatus}`]">
+                        <span class="status-dot"></span>
+                        <span>{{ statusText }}</span>
+                    </div>
+                    <a href="/" class="btn-leave" @click="leaveRoom">Leave</a>
+                </div>
+                {% endverbatim %}
+            </header>
+
+            <!-- Message Stream Area -->
+            {% verbatim %}
+            <div class="messages-box" ref="messagesContainer">
+                <div v-if="messages.length === 0" class="empty-chat">
+                    <p>No messages yet. Say hello!</p>
+                </div>
+
+                <template v-for="(msg, index) in messages" :key="index">
+                    <!-- System Notification Message -->
+                    <div v-if="msg.type === 'connection_established' || msg.type === 'system'" class="message-system">
+                        {{ msg.message }}
+                    </div>
+
+                    <!-- User Chat Message -->
+                    <div 
+                        v-else-if="msg.type === 'chat_message'" 
+                        :class="['message-wrapper', msg.sender === username ? 'outgoing' : 'incoming']"
+                    >
+                        <span v-if="msg.sender !== username" class="message-sender">
+                            {{ msg.sender }}
+                        </span>
+                        <div class="message-bubble">
+                            {{ msg.message }}
+                        </div>
+                    </div>
+                </template>
+            </div>
+            {% endverbatim %}
+
+            <!-- Input Footer -->
+            <footer class="chat-footer">
+                <div class="input-container">
+                    {% verbatim %}
+                    <input 
+                        type="text" 
+                        class="chat-input" 
+                        v-model="newMessage" 
+                        @keydown.enter.prevent="sendMessage"
+                        :placeholder="connectionStatus === 'connected' ? 'Type a message and press Enter...' : 'Connecting to chat...'"
+                        :disabled="connectionStatus !== 'connected'"
+                        ref="inputRef"
+                        autofocus
+                    >
+                    <button 
+                        class="btn-send" 
+                        @click="sendMessage" 
+                        :disabled="!newMessage.trim() || connectionStatus !== 'connected'"
+                    >
+                        <span>Send</span> &rarr;
+                    </button>
+                    {% endverbatim %}
+                </div>
+            </footer>
+        </div>
+    </div>
+
+    <script>
+        const { createApp, ref, computed, onMounted, onBeforeUnmount, nextTick } = Vue;
+
+        createApp({
+            setup() {
+                const roomName = JSON.parse(document.getElementById('room-name').textContent);
+                const username = ref(sessionStorage.getItem('chat_username') || '');
+                const messages = ref([]);
+                const newMessage = ref('');
+                const connectionStatus = ref('connecting'); // 'connecting' | 'connected' | 'disconnected'
+                const messagesContainer = ref(null);
+                const inputRef = ref(null);
+                let socket = null;
+
+                const statusText = computed(() => {
+                    switch (connectionStatus.value) {
+                        case 'connected': return 'Connected';
+                        case 'connecting': return 'Connecting...';
+                        case 'disconnected': return 'Disconnected';
+                        default: return '';
+                    }
+                });
+
+                const scrollToBottom = async () => {
+                    await nextTick();
+                    if (messagesContainer.value) {
+                        messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight;
+                    }
+                };
+
+                const connectWebSocket = () => {
+                    // Prompt for username if opened directly via URL without going through lobby
+                    if (!username.value) {
+                        let enteredName = prompt('Enter your username:');
+                        while (!enteredName || !enteredName.trim()) {
+                            enteredName = prompt('Username cannot be empty. Please enter your username:');
+                        }
+                        username.value = enteredName.trim();
+                        sessionStorage.setItem('chat_username', username.value);
+                    }
+
+                    // Dynamically choose ws:// or wss:// based on current page protocol
+                    const wsScheme = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
+                    const wsUrl = `${wsScheme}${window.location.host}/ws/chat/${encodeURIComponent(roomName)}/`;
+
+                    connectionStatus.value = 'connecting';
+                    socket = new WebSocket(wsUrl);
+
+                    socket.onopen = () => {
+                        connectionStatus.value = 'connected';
+                        if (inputRef.value) inputRef.value.focus();
+                    };
+
+                    socket.onmessage = (event) => {
+                        try {
+                            const data = JSON.parse(event.data);
+                            messages.value.push(data);
+                            scrollToBottom();
+                        } catch (err) {
+                            console.error('Error parsing incoming message JSON:', err);
+                        }
+                    };
+
+                    socket.onclose = () => {
+                        connectionStatus.value = 'disconnected';
+                    };
+
+                    socket.onerror = (err) => {
+                        console.error('WebSocket encountered an error:', err);
+                        connectionStatus.value = 'disconnected';
+                    };
+                };
+
+                const sendMessage = () => {
+                    const text = newMessage.value.trim();
+                    if (!text || connectionStatus.value !== 'connected') return;
+
+                    const payload = {
+                        sender: username.value,
+                        message: text
+                    };
+
+                    socket.send(JSON.stringify(payload));
+                    newMessage.value = '';
+                    if (inputRef.value) inputRef.value.focus();
+                };
+
+                const leaveRoom = () => {
+                    if (socket) socket.close();
+                };
+
+                onMounted(() => {
+                    connectWebSocket();
+                });
+
+                onBeforeUnmount(() => {
+                    if (socket) socket.close();
+                });
+
+                return {
+                    roomName,
+                    username,
+                    messages,
+                    newMessage,
+                    connectionStatus,
+                    statusText,
+                    messagesContainer,
+                    inputRef,
+                    sendMessage,
+                    leaveRoom
+                };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>

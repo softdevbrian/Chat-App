@@ -1,7 +1,29 @@
 import json
-from django.test import TestCase
+from django.test import TestCase, Client
+from django.urls import reverse
 from channels.testing import WebsocketCommunicator
 from chat_project.asgi import application
+
+class ChatViewTests(TestCase):
+    """
+    Automated test suite verifying the HTTP frontend views and templates.
+    """
+
+    def setUp(self):
+        self.client = Client()
+
+    def test_lobby_view(self):
+        response = self.client.get(reverse('chat:index'))
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'chat/index.html')
+        self.assertContains(response, 'Tuko Chat')
+
+    def test_room_view(self):
+        response = self.client.get(reverse('chat:room', args=['lounge']))
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'chat/room.html')
+        self.assertContains(response, 'lounge')
+
 
 class RoomGroupTests(TestCase):
     """
