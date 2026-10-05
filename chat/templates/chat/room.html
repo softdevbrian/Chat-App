@@ -13,7 +13,7 @@
 <body>
     <div id="app">
         <div class="chat-container">
-            <!-- Header -->
+            <!-- Room Header -->
             <header class="chat-header">
                 <div class="room-info">
                     <h2># {{ room_name }}</h2>
@@ -33,59 +33,96 @@
                 {% endverbatim %}
             </header>
 
-            <!-- Message Stream Area -->
-            {% verbatim %}
-            <div class="messages-box" ref="messagesContainer">
-                <div v-if="messages.length === 0" class="empty-chat">
-                    <p>No messages yet. Say hello!</p>
-                </div>
-
-                <template v-for="(msg, index) in messages" :key="index">
-                    <!-- System Notification Message -->
-                    <div v-if="msg.type === 'connection_established' || msg.type === 'system'" class="message-system">
-                        {{ msg.message }}
-                    </div>
-
-                    <!-- User Chat Message -->
-                    <div 
-                        v-else-if="msg.type === 'chat_message'" 
-                        :class="['message-wrapper', msg.sender === username ? 'outgoing' : 'incoming']"
-                    >
-                        <span v-if="msg.sender !== username" class="message-sender">
-                            {{ msg.sender }}
-                        </span>
-                        <div class="message-bubble">
-                            {{ msg.message }}
-                        </div>
-                    </div>
-                </template>
-            </div>
-            {% endverbatim %}
-
-            <!-- Input Footer -->
-            <footer class="chat-footer">
-                <div class="input-container">
+            <!-- Chat Body: Main Area + Online Users Sidebar -->
+            <div class="chat-body">
+                <!-- Main Chat Stream -->
+                <main class="chat-main">
                     {% verbatim %}
-                    <input 
-                        type="text" 
-                        class="chat-input" 
-                        v-model="newMessage" 
-                        @keydown.enter.prevent="sendMessage"
-                        :placeholder="connectionStatus === 'connected' ? 'Type a message and press Enter...' : 'Connecting to chat...'"
-                        :disabled="connectionStatus !== 'connected'"
-                        ref="inputRef"
-                        autofocus
-                    >
-                    <button 
-                        class="btn-send" 
-                        @click="sendMessage" 
-                        :disabled="!newMessage.trim() || connectionStatus !== 'connected'"
-                    >
-                        <span>Send</span> &rarr;
-                    </button>
+                    <div class="messages-box" ref="messagesContainer">
+                        <div v-if="messages.length === 0" class="empty-chat">
+                            <p>No messages yet. Say hello to the room!</p>
+                        </div>
+
+                        <template v-for="(msg, index) in messages" :key="index">
+                            <!-- User Joined Announcement -->
+                            <div v-if="msg.type === 'user_joined'" class="message-system user-join">
+                                👋 {{ msg.username }} joined the room
+                            </div>
+
+                            <!-- User Left Announcement -->
+                            <div v-else-if="msg.type === 'user_left'" class="message-system user-leave">
+                                🚪 {{ msg.username }} left the room
+                            </div>
+
+                            <!-- Connection greeting / system alert -->
+                            <div v-else-if="msg.type === 'connection_established' || msg.type === 'system'" class="message-system">
+                                {{ msg.message }}
+                            </div>
+
+                            <!-- User Chat Bubble -->
+                            <div 
+                                v-else-if="msg.type === 'chat_message'" 
+                                :class="['message-wrapper', msg.sender === username ? 'outgoing' : 'incoming']"
+                            >
+                                <span v-if="msg.sender !== username" class="message-sender">
+                                    {{ msg.sender }}
+                                </span>
+                                <div class="message-bubble">
+                                    {{ msg.message }}
+                                </div>
+                            </div>
+                        </template>
+                    </div>
                     {% endverbatim %}
-                </div>
-            </footer>
+
+                    <!-- Input Footer -->
+                    <footer class="chat-footer">
+                        <div class="input-container">
+                            {% verbatim %}
+                            <input 
+                                type="text" 
+                                class="chat-input" 
+                                v-model="newMessage" 
+                                @keydown.enter.prevent="sendMessage"
+                                :placeholder="connectionStatus === 'connected' ? 'Type a message and press Enter...' : 'Connecting to chat...'"
+                                :disabled="connectionStatus !== 'connected'"
+                                ref="inputRef"
+                                autofocus
+                            >
+                            <button 
+                                class="btn-send" 
+                                @click="sendMessage" 
+                                :disabled="!newMessage.trim() || connectionStatus !== 'connected'"
+                            >
+                                <span>Send</span> &rarr;
+                            </button>
+                            {% endverbatim %}
+                        </div>
+                    </footer>
+                </main>
+
+                <!-- Online Users Sidebar -->
+                {% verbatim %}
+                <aside class="chat-sidebar">
+                    <div class="sidebar-header">
+                        <h3>Online Users</h3>
+                        <span class="count-badge">{{ onlineUsers.length }}</span>
+                    </div>
+
+                    <ul class="user-list">
+                        <li 
+                            v-for="user in onlineUsers" 
+                            :key="user" 
+                            :class="['user-item', { 'is-me': user === username }]"
+                        >
+                            <span class="user-dot"></span>
+                            <span class="user-name">{{ user }}</span>
+                            <span v-if="user === username" class="badge-you">You</span>
+                        </li>
+                    </ul>
+                </aside>
+                {% endverbatim %}
+            </div>
         </div>
     </div>
 
@@ -97,6 +134,7 @@
                 const roomName = JSON.parse(document.getElementById('room-name').textContent);
                 const username = ref(sessionStorage.getItem('chat_username') || '');
                 const messages = ref([]);
+                const onlineUsers = ref([]);
                 const newMessage = ref('');
                 const connectionStatus = ref('connecting'); // 'connecting' | 'connected' | 'disconnected'
                 const messagesContainer = ref(null);
@@ -140,13 +178,39 @@
                     socket.onopen = () => {
                         connectionStatus.value = 'connected';
                         if (inputRef.value) inputRef.value.focus();
+
+                        // Register username immediately with the server
+                        socket.send(JSON.stringify({
+                            type: 'set_username',
+                            username: username.value
+                        }));
                     };
 
                     socket.onmessage = (event) => {
                         try {
                             const data = JSON.parse(event.data);
-                            messages.value.push(data);
-                            scrollToBottom();
+
+                            if (data.type === 'user_list') {
+                                // Full initial user list sync
+                                onlineUsers.value = data.users;
+                            } else if (data.type === 'user_joined') {
+                                // User joined room
+                                onlineUsers.value = data.users;
+                                messages.value.push(data);
+                                scrollToBottom();
+                            } else if (data.type === 'user_left') {
+                                // User left room
+                                onlineUsers.value = data.users;
+                                messages.value.push(data);
+                                scrollToBottom();
+                            } else if (data.type === 'chat_message') {
+                                // Chat message
+                                messages.value.push(data);
+                                scrollToBottom();
+                            } else if (data.type === 'connection_established') {
+                                messages.value.push(data);
+                                scrollToBottom();
+                            }
                         } catch (err) {
                             console.error('Error parsing incoming message JSON:', err);
                         }
@@ -167,6 +231,7 @@
                     if (!text || connectionStatus.value !== 'connected') return;
 
                     const payload = {
+                        type: 'chat_message',
                         sender: username.value,
                         message: text
                     };
@@ -192,6 +257,7 @@
                     roomName,
                     username,
                     messages,
+                    onlineUsers,
                     newMessage,
                     connectionStatus,
                     statusText,

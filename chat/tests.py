@@ -3,6 +3,7 @@ from django.test import TestCase, Client
 from django.urls import reverse
 from channels.testing import WebsocketCommunicator
 from chat_project.asgi import application
+from chat.consumers import ChatConsumer
 
 class ChatViewTests(TestCase):
     """
@@ -25,59 +26,105 @@ class ChatViewTests(TestCase):
         self.assertContains(response, 'lounge')
 
 
-class RoomGroupTests(TestCase):
+class UserPresenceAndBroadcastingTests(TestCase):
     """
-    Automated test suite verifying multi-room isolation and group broadcasting.
+    Automated test suite verifying user presence tracking, join/leave
+    notifications, online user lists, and room isolation.
     """
 
-    async def test_room_group_broadcasting_and_isolation(self):
-        # 1. Connect Alice and Bob to room 'general'
-        alice = WebsocketCommunicator(application, "/ws/chat/general/")
+    def setUp(self):
+        # Reset class-level roster before each test
+        ChatConsumer.room_rosters.clear()
+
+    def tearDown(self):
+        ChatConsumer.room_rosters.clear()
+
+    async def test_user_presence_lifecycle(self):
+        # 1. Alice connects to room 'lobby'
+        alice = WebsocketCommunicator(application, "/ws/chat/lobby/")
         connected_a, _ = await alice.connect()
         self.assertTrue(connected_a)
 
-        bob = WebsocketCommunicator(application, "/ws/chat/general/")
+        # 2. Alice sends set_username handshake
+        await alice.send_json_to({
+            "type": "set_username",
+            "username": "Alice"
+        })
+
+        # Alice receives initial user_list
+        list_msg = await alice.receive_json_from()
+        self.assertEqual(list_msg["type"], "user_list")
+        self.assertEqual(list_msg["users"], ["Alice"])
+
+        # Alice receives user_joined announcement
+        join_msg = await alice.receive_json_from()
+        self.assertEqual(join_msg["type"], "user_joined")
+        self.assertEqual(join_msg["username"], "Alice")
+
+        # 3. Bob connects to the same room 'lobby'
+        bob = WebsocketCommunicator(application, "/ws/chat/lobby/")
         connected_b, _ = await bob.connect()
         self.assertTrue(connected_b)
 
-        # 2. Connect Charlie to a completely different room: 'gaming'
+        await bob.send_json_to({
+            "type": "set_username",
+            "username": "Bob"
+        })
+
+        # Bob receives initial user_list with both users
+        bob_list = await bob.receive_json_from()
+        self.assertEqual(bob_list["type"], "user_list")
+        self.assertEqual(sorted(bob_list["users"]), ["Alice", "Bob"])
+
+        # Both Alice and Bob receive user_joined for Bob
+        bob_join_for_alice = await alice.receive_json_from()
+        self.assertEqual(bob_join_for_alice["type"], "user_joined")
+        self.assertEqual(bob_join_for_alice["username"], "Bob")
+        self.assertEqual(sorted(bob_join_for_alice["users"]), ["Alice", "Bob"])
+
+        bob_join_for_bob = await bob.receive_json_from()
+        self.assertEqual(bob_join_for_bob["type"], "user_joined")
+        self.assertEqual(bob_join_for_bob["username"], "Bob")
+
+        # 4. Charlie connects to a DIFFERENT room 'gaming' (Isolation check)
         charlie = WebsocketCommunicator(application, "/ws/chat/gaming/")
         connected_c, _ = await charlie.connect()
         self.assertTrue(connected_c)
 
-        # 3. Consume welcome messages
-        welcome_a = await alice.receive_json_from()
-        self.assertEqual(welcome_a["room"], "general")
+        await charlie.send_json_to({
+            "type": "set_username",
+            "username": "Charlie"
+        })
+        charlie_list = await charlie.receive_json_from()
+        self.assertEqual(charlie_list["users"], ["Charlie"])
+        await charlie.receive_json_from() # charlie join announcement
 
-        welcome_b = await bob.receive_json_from()
-        self.assertEqual(welcome_b["room"], "general")
-
-        welcome_c = await charlie.receive_json_from()
-        self.assertEqual(welcome_c["room"], "gaming")
-
-        # 4. Alice sends a message to room 'general'
+        # 5. Alice sends a chat message
         await alice.send_json_to({
-            "message": "Hey everyone in general!",
-            "sender": "Alice"
+            "type": "chat_message",
+            "message": "Hello Bob!"
         })
 
-        # 5. Alice should receive the broadcast
-        msg_alice = await alice.receive_json_from()
-        self.assertEqual(msg_alice["type"], "chat_message")
-        self.assertEqual(msg_alice["message"], "Hey everyone in general!")
-        self.assertEqual(msg_alice["sender"], "Alice")
+        chat_alice = await alice.receive_json_from()
+        self.assertEqual(chat_alice["type"], "chat_message")
+        self.assertEqual(chat_alice["message"], "Hello Bob!")
+        self.assertEqual(chat_alice["sender"], "Alice")
 
-        # 6. Bob (in the same room) MUST also receive the broadcast
-        msg_bob = await bob.receive_json_from()
-        self.assertEqual(msg_bob["type"], "chat_message")
-        self.assertEqual(msg_bob["message"], "Hey everyone in general!")
-        self.assertEqual(msg_bob["sender"], "Alice")
+        chat_bob = await bob.receive_json_from()
+        self.assertEqual(chat_bob["type"], "chat_message")
+        self.assertEqual(chat_bob["message"], "Hello Bob!")
 
-        # 7. Charlie (in 'gaming' room) MUST NOT receive anything from 'general'
-        no_message_for_charlie = await charlie.receive_nothing(timeout=0.1)
-        self.assertTrue(no_message_for_charlie, "Charlie received a message from a room he did not join!")
+        # Charlie in gaming receives nothing from lobby
+        self.assertTrue(await charlie.receive_nothing(timeout=0.1))
 
-        # 8. Clean disconnection
-        await alice.disconnect()
+        # 6. Bob disconnects -> Alice must receive user_left for Bob
         await bob.disconnect()
+
+        leave_msg = await alice.receive_json_from()
+        self.assertEqual(leave_msg["type"], "user_left")
+        self.assertEqual(leave_msg["username"], "Bob")
+        self.assertEqual(leave_msg["users"], ["Alice"])
+
+        # 7. Clean up remaining
+        await alice.disconnect()
         await charlie.disconnect()

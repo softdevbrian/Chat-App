@@ -42,7 +42,7 @@ body {
 /* App Container */
 #app {
     width: 100%;
-    max-width: 800px;
+    max-width: 960px;
 }
 
 /* ==========================================================================
@@ -235,7 +235,21 @@ body {
     color: #fca5a5;
 }
 
+/* Chat Body (Main Stream + Sidebar) */
+.chat-body {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+}
+
 /* Message Stream Area */
+.chat-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
 .messages-box {
     flex: 1;
     overflow-y: auto;
@@ -311,7 +325,19 @@ body {
     padding: 6px 14px;
     border-radius: var(--radius-full);
     text-align: center;
-    margin: 8px 0;
+    margin: 4px 0;
+}
+
+.message-system.user-join {
+    border-color: rgba(34, 197, 94, 0.3);
+    color: #86efac;
+    background: rgba(34, 197, 94, 0.1);
+}
+
+.message-system.user-leave {
+    border-color: rgba(245, 158, 11, 0.3);
+    color: #fde047;
+    background: rgba(245, 158, 11, 0.1);
 }
 
 /* Empty State */
@@ -326,6 +352,105 @@ body {
     height: 48px;
     margin-bottom: 8px;
     opacity: 0.5;
+}
+
+/* Online Users Sidebar */
+.chat-sidebar {
+    width: 220px;
+    background: rgba(15, 23, 42, 0.6);
+    border-left: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+}
+
+.sidebar-header {
+    padding: 16px;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.sidebar-header h3 {
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-secondary);
+}
+
+.count-badge {
+    background: var(--bg-card-secondary);
+    color: var(--text-primary);
+    font-size: 0.75rem;
+    padding: 2px 8px;
+    border-radius: var(--radius-full);
+    font-weight: 600;
+}
+
+.user-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.user-list::-webkit-scrollbar {
+    width: 4px;
+}
+
+.user-list::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: var(--radius-full);
+}
+
+.user-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border-radius: var(--radius-sm);
+    font-size: 0.88rem;
+    color: var(--text-primary);
+    background: rgba(30, 41, 59, 0.4);
+    border: 1px solid transparent;
+    transition: background 0.15s;
+}
+
+.user-item:hover {
+    background: var(--bg-card-secondary);
+}
+
+.user-item.is-me {
+    border-color: rgba(59, 130, 246, 0.4);
+    background: rgba(59, 130, 246, 0.1);
+}
+
+.user-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--status-green);
+    box-shadow: 0 0 6px var(--status-green);
+}
+
+.user-name {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.badge-you {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--accent-blue);
+    background: rgba(59, 130, 246, 0.15);
+    padding: 2px 6px;
+    border-radius: var(--radius-full);
 }
 
 /* Message Input Area */
@@ -379,4 +504,11 @@ body {
 .btn-send:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+}
+
+/* Responsive adjustments */
+@media (max-width: 640px) {
+    .chat-sidebar {
+        display: none; /* Can be toggled on mobile */
+    }
 }
