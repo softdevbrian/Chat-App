@@ -3,45 +3,82 @@ from channels.generic.websocket import AsyncWebsocketConsumer
 
 class ChatConsumer(AsyncWebsocketConsumer):
     """
-    Echo consumer for learning WebSockets with Django Channels.
-    Receives messages from a client and immediately echoes them back.
+    Multi-room broadcasting consumer for Django Channels.
+    Manages group membership (join, broadcast, leave) using the Channel Layer.
     """
 
     async def connect(self):
         """
-        Called when a client initiates a WebSocket connection handshake.
-        Accepts the connection and sends a welcome message.
+        Called when a WebSocket connection is initiated.
+        Extracts room name from URL, adds channel to group, and accepts handshake.
         """
+        # Extract room_name from the URL route parameters (scope['url_route']['kwargs'])
+        self.room_name = self.scope['url_route']['kwargs']['room_name']
+        self.room_group_name = f'chat_{self.room_name}'
+
+        # Add this individual connection channel to the named room group
+        await self.channel_layer.group_add(
+            self.room_group_name,
+            self.channel_name
+        )
+
         # Accept the WebSocket handshake
         await self.accept()
 
-        # Send an initial welcome confirmation to the connecting client
+        # Send connection confirmation to THIS connecting client
         await self.send(text_data=json.dumps({
             'type': 'connection_established',
-            'message': 'Connected to Django Channels Echo Server!'
+            'room': self.room_name,
+            'message': f'Connected to room: {self.room_name}'
         }))
 
     async def disconnect(self, close_code):
         """
-        Called when the WebSocket closes (tab closed, network dropped, etc.).
+        Called when the WebSocket connection terminates.
+        Removes this connection channel from the room group.
         """
-        # No group cleanup needed yet for simple echo
-        pass
+        # Remove this channel from the room group to avoid dead broadcasting
+        await self.channel_layer.group_discard(
+            self.room_group_name,
+            self.channel_name
+        )
 
     async def receive(self, text_data=None, bytes_data=None):
         """
-        Called when the client sends a message down the WebSocket pipe.
+        Called when a client sends a message down its WebSocket.
+        Broadcasts the message to all channels in the room group.
         """
-        # Parse incoming payload with safe JSON error handling
+        # Parse payload with safe error handling
         try:
             data = json.loads(text_data)
             message = data.get('message', '')
+            sender = data.get('sender', 'Anonymous')
         except (json.JSONDecodeError, TypeError):
-            # Fallback in case raw unformatted text was sent
             message = text_data or ''
+            sender = 'Anonymous'
 
-        # Echo the message back to the same client
+        # Broadcast the message to all subscribers of the room group
+        # The 'type' string ('chat_message') routes to the method chat_message below!
+        await self.channel_layer.group_send(
+            self.room_group_name,
+            {
+                'type': 'chat_message',
+                'message': message,
+                'sender': sender
+            }
+        )
+
+    async def chat_message(self, event):
+        """
+        Handler invoked by Channels when a 'chat_message' event is received
+        from the channel layer group. Sends the payload down THIS client's WebSocket.
+        """
+        message = event['message']
+        sender = event.get('sender', 'Anonymous')
+
+        # Push the message to the connected client
         await self.send(text_data=json.dumps({
-            'type': 'echo_response',
-            'message': f'Echo from server: {message}'
+            'type': 'chat_message',
+            'message': message,
+            'sender': sender
         }))
