@@ -1,0 +1,38 @@
+# ==============================================================================
+# systemd Service Unit for Django Channels Daphne ASGI Server
+# Target Path on VM: /etc/systemd/system/chat-app.service
+# ==============================================================================
+
+[Unit]
+Description=Daphne ASGI Server for Django Channels Chat App
+After=network.target redis-server.service
+
+[Service]
+Type=simple
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/chat_server
+
+# Environment Variables
+Environment="DJANGO_SETTINGS_MODULE=chat_project.settings"
+Environment="DJANGO_DEBUG=False"
+Environment="USE_REDIS=True"
+Environment="REDIS_HOST=127.0.0.1"
+Environment="REDIS_PORT=6379"
+
+# Command to start Daphne on port 8001
+ExecStart=/home/ubuntu/chat_server/venv/bin/daphne -b 127.0.0.1 -p 8001 chat_project.asgi:application
+
+# Restart automatically on crash or server reboot
+Restart=always
+RestartSec=3
+
+# Resource & File Descriptor Limits for high concurrency WebSockets
+LimitNOFILE=65535
+
+# Logging to system journal (accessible via journalctl -u chat-app -f)
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
