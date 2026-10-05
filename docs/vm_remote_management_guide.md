@@ -24,25 +24,25 @@ When you connect to it using **SSH (Secure Shell)**:
 
 ---
 
-### Step 2: The Magic Connection Command
-Copy and paste this single command into PowerShell and press **Enter**:
+### Step 2: The Magic 1-Word Shortcut
+Because we configured your `~/.ssh/config` file, you now only need to type **one short command** and press **Enter**:
 
 ```powershell
-ssh -i "C:\Users\YOBI\Downloads\ssh-key-2026-10-05.key" ubuntu@130.61.9.37
+ssh yb-chatapp
 ```
-*(Or you can also use your domain name: `ubuntu@ybchatapp.duckdns.org`)*
 
-### What each part of that command means:
-* `ssh`: Tells Windows to start an encrypted Secure Shell session.
-* `-i "C:\Users\...\ssh-key-...key"`: Points to your private key file.
-* `ubuntu`: The default administrative username on Oracle's Ubuntu server.
-* `@130.61.9.37`: The public IP address of your server.
+*(No IP addresses, no file paths, and no usernames to remember! Your computer automatically reads your saved config and logs you in.)*
+
+#### The Full Command (If ever needed as a backup):
+```powershell
+ssh -i "~/.ssh/oracle_vms.key" ubuntu@130.61.9.37
+```
 
 Once connected, your command prompt will change from `PS C:\Users\YOBI>` to:
 ```bash
 ubuntu@yb-chatapp:~$
 ```
-**You are now officially inside the Linux VM!**
+**You are now officially inside your Linux VM in Frankfurt, Germany!**
 
 ---
 

@@ -23,7 +23,13 @@
                 </div>
 
                 {% verbatim %}
-                <div style="display: flex; align-items: center;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <!-- Mobile Online Users Toggle Button -->
+                    <button class="btn-users-toggle" @click="showMobileUsers = !showMobileUsers" :title="'Online users (' + onlineUsers.length + ')'">
+                        <span class="users-icon">👥</span>
+                        <span class="users-count">{{ onlineUsers.length }}</span>
+                    </button>
+
                     <div :class="['status-pill', `status-${connectionStatus}`]">
                         <span class="status-dot"></span>
                         <span>{{ statusText }}</span>
@@ -101,12 +107,15 @@
                     </footer>
                 </main>
 
-                <!-- Online Users Sidebar -->
+                <!-- Online Users Sidebar (Fixed on Desktop, Slide-over Drawer on Mobile) -->
                 {% verbatim %}
-                <aside class="chat-sidebar">
+                <aside :class="['chat-sidebar', { 'mobile-open': showMobileUsers }]">
                     <div class="sidebar-header">
                         <h3>Online Users</h3>
-                        <span class="count-badge">{{ onlineUsers.length }}</span>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span class="count-badge">{{ onlineUsers.length }}</span>
+                            <button class="btn-close-sidebar" @click="showMobileUsers = false" aria-label="Close sidebar">✕</button>
+                        </div>
                     </div>
 
                     <ul class="user-list">
@@ -121,6 +130,9 @@
                         </li>
                     </ul>
                 </aside>
+
+                <!-- Backdrop for mobile drawer -->
+                <div v-if="showMobileUsers" class="sidebar-backdrop" @click="showMobileUsers = false"></div>
                 {% endverbatim %}
             </div>
         </div>
@@ -150,6 +162,7 @@
                 const connectionStatus = ref('connecting'); // 'connecting' | 'connected' | 'disconnected'
                 const messagesContainer = ref(null);
                 const inputRef = ref(null);
+                const showMobileUsers = ref(false);
                 let socket = null;
                 let reconnectTimer = null;
                 let isIntentionallyClosed = false;
@@ -324,6 +337,7 @@
                     statusText,
                     messagesContainer,
                     inputRef,
+                    showMobileUsers,
                     sendMessage,
                     leaveRoom
                 };

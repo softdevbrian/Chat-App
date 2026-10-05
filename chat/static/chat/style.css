@@ -506,9 +506,85 @@ body {
     cursor: not-allowed;
 }
 
+/* Mobile Users Toggle Button & Close Button */
+.btn-users-toggle {
+    display: none;
+    align-items: center;
+    gap: 6px;
+    background: rgba(30, 41, 59, 0.8);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 6px 12px;
+    border-radius: var(--radius-full);
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-users-toggle:hover {
+    background: rgba(51, 65, 85, 0.9);
+    border-color: var(--accent-blue);
+}
+
+.btn-users-toggle .users-count {
+    background: var(--accent-blue);
+    color: #ffffff;
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 1px 6px;
+    border-radius: var(--radius-full);
+}
+
+.btn-close-sidebar {
+    display: none;
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 1.1rem;
+    cursor: pointer;
+    padding: 4px;
+    line-height: 1;
+}
+
+.btn-close-sidebar:hover {
+    color: var(--text-primary);
+}
+
 /* Responsive adjustments */
 @media (max-width: 640px) {
+    .btn-users-toggle {
+        display: inline-flex;
+    }
+
+    .btn-close-sidebar {
+        display: block;
+    }
+
     .chat-sidebar {
-        display: none; /* Can be toggled on mobile */
+        display: flex;
+        position: fixed;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        width: 260px;
+        max-width: 80vw;
+        background: #0f172a;
+        z-index: 1000;
+        transform: translateX(100%);
+        transition: transform 0.25s ease-in-out;
+        box-shadow: -4px 0 25px rgba(0, 0, 0, 0.6);
+    }
+
+    .chat-sidebar.mobile-open {
+        transform: translateX(0);
+    }
+
+    .sidebar-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.6);
+        backdrop-filter: blur(2px);
+        z-index: 999;
     }
 }

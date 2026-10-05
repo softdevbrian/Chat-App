@@ -152,7 +152,15 @@ if USE_REDIS:
         "default": {
             "BACKEND": "channels_redis.core.RedisChannelLayer",
             "CONFIG": {
-                "hosts": [f"redis://{REDIS_HOST}:{REDIS_PORT}/0"],
+                "hosts": [
+                    {
+                        "address": f"redis://{REDIS_HOST}:{REDIS_PORT}/0",
+                        "socket_timeout": 15,
+                        "socket_connect_timeout": 5,
+                        "socket_keepalive": True,
+                        "retry_on_timeout": True,
+                    }
+                ],
             },
         },
     }
