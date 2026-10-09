@@ -77,7 +77,7 @@ We needed to tell DuckDNS: *"Whenever someone visits `ybchatapp.duckdns.org`, ro
 
 #### 1. Update the DuckDNS Record:
 ```powershell
-curl.exe -s "https://www.duckdns.org/update?domains=ybchatapp&token=1a48bf8e-c0f0-42db-8ce7-dfa666845068&ip=130.61.9.37"
+curl.exe -s "https://www.duckdns.org/update?domains=ybchatapp&token=<YOUR_DUCKDNS_TOKEN>&ip=130.61.9.37"
 ```
 
 #### 2. Verify Global DNS Resolution:
