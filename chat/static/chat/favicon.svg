@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="tukoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3b82f6"/>
+      <stop offset="100%" stop-color="#6366f1"/>
+    </linearGradient>
+    <filter id="boltGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="2" stdDeviation="2.5" flood-color="#000000" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+  <!-- Rounded Brand Squircle -->
+  <rect width="64" height="64" rx="18" fill="url(#tukoGrad)"/>
+  <!-- Sharp Lightning Bolt Icon -->
+  <path d="M36 7 L18 35 L32 35 L27 57 L47 29 L33 29 Z" fill="#ffffff" filter="url(#boltGlow)"/>
+</svg>
