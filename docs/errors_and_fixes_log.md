@@ -18,6 +18,11 @@ For every issue, you will find:
 3. [Issue 3: The Directory Traversal Barrier (Nginx 403 Forbidden on Static Files)](#issue-3-the-directory-traversal-barrier-nginx-403-forbidden-on-static-files)
 4. [Issue 4: The 5-Second Idle Crash (`redis.exceptions.TimeoutError` in Daphne)](#issue-4-the-5-second-idle-crash-redisexceptionstimeouterror-in-daphne)
 5. [Issue 5: Tab Amnesia & Frozen Input (Lack of Auto-Reconnect & Client Persistence)](#issue-5-tab-amnesia--frozen-input-lack-of-auto-reconnect--client-persistence)
+6. [Issue 6: Multiple Authentication Backends Collision (`ValueError: You have multiple authentication backends...`)](#issue-6-multiple-authentication-backends-collision-valueerror-you-have-multiple-authentication-backends)
+7. [Issue 7: Brevo SMTP Sender Verification & Envelope Mismatch (550 / 454 SMTP Authorization Rejection)](#issue-7-brevo-smtp-sender-verification--envelope-mismatch-550--454-smtp-authorization-rejection)
+8. [Issue 8: The Squeezed Mobile Header & Multiline Action Wrap Barrier](#issue-8-the-squeezed-mobile-header--multiline-action-wrap-barrier)
+9. [Issue 9: The Desktop Viewport Squeeze (Narrow Floating Phone Emulator on Widescreen Monitors)](#issue-9-the-desktop-viewport-squeeze-narrow-floating-phone-emulator-on-widescreen-monitors)
+10. [Issue 10: Group Message Retention FIFO Pruner & Sliced Queryset Deletion Error](#issue-10-group-message-retention-fifo-pruner--sliced-queryset-deletion-error)
 
 ---
 
@@ -350,6 +355,302 @@ Production WebSocket clients must never be "one-shot". They must always feature 
 
 ---
 
+## Issue 6: Multiple Authentication Backends Collision (`ValueError: You have multiple authentication backends...`)
+
+### 🚨 The Symptom
+Immediately after a user submits the registration form at `/register/`, Django crashes with an unhandled exception:
+```python
+ValueError: You have multiple authentication backends configured and therefore must provide the backend argument or set backend on the user.
+```
+
+### 💡 The Analogy
+Imagine a luxury office building that hires two different security firms to staff the lobby: Firm A (verifies photo IDs) and Firm B (verifies fingerprints). A brand-new employee signs their employment contract and the HR assistant says: *"Welcome, let me swipe you right through the turnstile!"* But the automated turnstile alarm blares and freezes: *"Hold on! You have two security firms on contract. Which firm officially cleared this person?!"*
+
+### 🔍 Deep-Dive Root Cause
+In `chat_project/settings.py`, we registered two authentication backends to support dual login:
+```python
+AUTHENTICATION_BACKENDS = [
+    'chat.backends.EmailOrUsernameModelBackend',
+    'django.contrib.auth.backends.ModelBackend',
+]
+```
+When `authenticate(request, username=..., password=...)` runs, Django inspects each backend in sequence and attaches the backend's Python path to `user.backend`.
+
+However, during self-service account registration in `register_view`:
+1. The user was created directly using `User.objects.create_user(...)`.
+2. The code immediately attempted to log them in via `django.contrib.auth.login(request, user)`.
+3. Because `user` was created by `create_user()` rather than returned from `authenticate()`, `user.backend` did not exist on the user instance.
+4. Because `len(settings.AUTHENTICATION_BACKENDS) > 1`, Django refused to guess which backend to assign to the session and threw a fatal `ValueError`.
+
+### 🛠️ The Fix Applied
+
+We explicitly passed the canonical backend identifier `backend='chat.backends.EmailOrUsernameModelBackend'` directly to `login()`:
+
+#### Before:
+```python
+# chat/views.py
+user = User.objects.create_user(username=username, email=email, password=password)
+UserProfile.objects.create(user=user, avatar_id=avatar_id)
+
+# Fails if multiple backends exist in settings:
+login(request, user)
+return redirect('chat:dashboard')
+```
+
+#### After:
+```python
+# chat/views.py
+user = User.objects.create_user(username=username, email=email, password=password)
+UserProfile.objects.create(user=user, avatar_id=avatar_id)
+
+# Explicit backend parameter resolves multi-backend ambiguity:
+login(request, user, backend='chat.backends.EmailOrUsernameModelBackend')
+return redirect('chat:dashboard')
+```
+
+### 🎯 Key Takeaway
+Whenever your Django application configures more than one authentication backend in `AUTHENTICATION_BACKENDS`, any invocation of `login(request, user)` that operates on a freshly created user model (bypassing `authenticate()`) **must** explicitly specify `backend='path.to.Backend'`.
+
+---
+
+## Issue 7: Brevo SMTP Sender Verification & Envelope Mismatch (550 / 454 SMTP Authorization Rejection)
+
+### 🚨 The Symptom
+When requesting a password reset email via `/forgot-password/`, Django threw:
+```text
+smtplib.SMTPSenderRefused: (550, b'5.7.1 Sender email address not allowed: [brevo@example.com]', 'brevo@example.com')
+```
+Or an SMTP 454 Authentication failure when sending via `smtp-relay.brevo.com`.
+
+### 💡 The Analogy
+You open a commercial courier delivery account under corporate badge #8759. You then attempt to drop off a sealed parcel where the sender label says *"From: Unknown Random Account"*. The courier clerk scans the barcode, verifies that the return address does not belong to any authorized representative on your contract, and rejects the package immediately.
+
+### 🔍 Deep-Dive Root Cause
+Brevo (formerly Sendinblue) maintains strict anti-spoofing and deliverability policies. Unlike permissive SMTP servers, Brevo enforces that:
+1. **The SMTP Relay Account Login (`EMAIL_HOST_USER`)** is a dedicated account identifier (e.g. `bd87da001@smtp-brevo.com`).
+2. **The From Header (`DEFAULT_FROM_EMAIL`)** must contain an email address that has been explicitly confirmed and verified via email challenge in the Brevo Dashboard under **Senders & Domains**.
+3. If `DEFAULT_FROM_EMAIL` uses a different unverified address, Brevo rejects the SMTP envelope with `550 Sender email address not allowed`.
+
+### 🛠️ The Fix Applied
+
+1. Configured the master SMTP relay credentials in `chat_project/settings.py` pointing to port `587` with explicit `EMAIL_USE_TLS = True`:
+```python
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp-relay.brevo.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = os.environ.get('BREVO_SMTP_LOGIN', 'bd87da001@smtp-brevo.com')
+EMAIL_HOST_PASSWORD = os.environ.get('BREVO_SMTP_KEY', '')
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'Tuko Chat <briankuriasupport@gmail.com>')
+```
+2. Verified `briankuriasupport@gmail.com` as an authorized sender in Brevo's administrative console.
+3. Tested sending end-to-end via `django.core.mail.send_mail(...)`, verifying 100% inbox delivery.
+
+### 🎯 Key Takeaway
+Always distinguish between your **SMTP Authentication Principal** (`EMAIL_HOST_USER`) and your **Public Sender Identity** (`DEFAULT_FROM_EMAIL`). In modern transactional providers (Brevo, SendGrid, Postmark), every distinct sender email address must be verified before SMTP relays will accept mail.
+
+---
+
+## Issue 8: The Squeezed Mobile Header & Multiline Action Wrap Barrier
+
+### 🚨 The Symptom
+On mobile devices or narrow viewport widths, the top chat room header looked deformed:
+- Group names like `# general` collided with long creator tags like `You Created This`.
+- The subtitle wrapped "2" and "members" onto separate vertical lines.
+- Action buttons broke their text across multiple lines, collapsing into awkward tall square boxes:
+  ```
+  [ 🗑️ Delete ]
+  [   Group   ]
+  ```
+
+### 💡 The Analogy
+Imagine designing a vehicle dashboard where the speedometer, fuel gauge, and hazard buttons have no minimum widths or wrapping guards. When installed in a compact car, the hazard button splits into two rows of text and squashes the speedometer into an unreadable sliver.
+
+### 🔍 Deep-Dive Root Cause
+1. CSS flex child items inside `.chat-pane-header` had no `white-space: nowrap;` constraint. When horizontal space tightened, the browser's line-breaking engine wrapped spaces between words inside buttons.
+2. The left metadata container lacked `min-width: 0;`, preventing standard CSS flex truncation (`text-overflow: ellipsis`) from firing.
+3. Buttons lacked fixed heights and `flex-shrink: 0;`, allowing them to deform vertically under horizontal pressure.
+
+### 🛠️ The Fix Applied
+
+1. **Applied Non-Wrapping Rules & Truncation:**
+```css
+.chat-pane-header {
+    padding: 12px 18px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 68px;
+    flex-shrink: 0;
+}
+
+.chat-header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0; /* Crucial: allows flex items to shrink below content width */
+    flex: 1;
+}
+
+.chat-header-name {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.btn-header-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 36px;
+    padding: 0 13px;
+    white-space: nowrap;
+    flex-shrink: 0; /* Prevents button from being crushed */
+}
+```
+
+2. **Added Compact Responsive Breakpoint:**
+```css
+@media (max-width: 480px) {
+    .chat-pane-header {
+        padding: 10px 14px;
+        gap: 8px;
+    }
+    .btn-header-pill {
+        padding: 0 9px;
+        height: 32px;
+    }
+    /* Hide text labels on phone screens; display only icons and counts */
+    .btn-members-pill .pill-label,
+    .btn-delete-pill .pill-label {
+        display: none;
+    }
+}
+```
+
+### 🎯 Key Takeaway
+In compact application headers with dynamic titles and action buttons, always enforce `min-width: 0;` on flex text parents, `white-space: nowrap;` on buttons, and use media queries to collapse verbose text into clean icon pills on narrow viewports.
+
+---
+
+## Issue 9: The Desktop Viewport Squeeze (Narrow Floating Phone Emulator on Widescreen Monitors)
+
+### 🚨 The Symptom
+On desktop monitors (1920x1080), auth pages (Sign In and Registration) rendered as a tiny, narrow card (~380px wide) floating in a vast, empty dark background. On the registration page, four vertical text inputs, an eight-avatar grid, and a submit button formed an endlessly long, cramped vertical tube.
+
+### 💡 The Analogy
+Displaying a mobile phone screen directly in the center of a giant 70-inch 4K TV. 85% of the screen is completely blank, while everything inside the phone frame is uncomfortably scrunched together.
+
+### 🔍 Deep-Dive Root Cause
+The page CSS was designed strictly with a single-column mobile-first wrapper:
+```css
+.auth-container {
+    width: 100%;
+    max-width: 440px; /* Locked to mobile width regardless of viewport */
+}
+```
+Because no two-column desktop breakpoint was defined, widescreen browsers could only render the mobile layout, creating a poor desktop user experience.
+
+### 🛠️ The Fix Applied
+
+Engineered an executive **Two-Pane Split-Hero Layout** on desktop that smoothly collapses to a single column on mobile:
+
+```css
+.auth-page {
+    width: 100%;
+    min-height: 100vh;
+    display: grid;
+    /* Two distinct columns on desktop: Showcase Left + Form Right */
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+}
+
+.showcase {
+    background: var(--bg);
+    padding: clamp(36px, 5vw, 72px);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    border-right: 1px solid var(--line);
+}
+
+.grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr; /* Username next to Email, Password next to Confirm */
+    gap: 14px;
+}
+
+@media (max-width: 900px) {
+    .auth-page {
+        grid-template-columns: 1fr; /* Seamless transition to mobile */
+    }
+    .showcase {
+        display: none;
+    }
+    .grid-2 {
+        grid-template-columns: 1fr;
+    }
+}
+```
+
+### 🎯 Key Takeaway
+Portfolio and production web applications should never display single-column mobile cards on widescreen desktop viewports. Using CSS Grid split-hero layouts allows apps to showcase product value propositions on the left while providing comfortable, uncrowded input forms on the right.
+
+---
+
+## Issue 10: Group Message Retention FIFO Pruner & Sliced Queryset Deletion Error
+
+### 🚨 The Symptom
+When implementing the 100-message FIFO auto-pruning engine in Django ORM:
+```python
+total = conv.messages.count()
+if total > 100:
+    excess = total - 100
+    conv.messages.order_by('timestamp')[:excess].delete()
+```
+Django raised an unhandled `AssertionError`:
+```text
+AssertionError: Cannot filter a query once a slice has been taken.
+```
+
+### 💡 The Analogy
+Imagine a library archive where you want to discard the oldest 5 magazines. Instead of pulling those 5 magazines off the shelf and carrying them to the recycling bin, you try to put a giant industrial shredder directly on the shelf with a sticker saying *"shred up to index 5"*. The library's safety protocols shut down the power grid immediately!
+
+### 🔍 Deep-Dive Root Cause
+In SQL syntax, standard `DELETE` statements do not support `LIMIT` or `OFFSET` clauses (e.g., `DELETE FROM chat_message ORDER BY timestamp LIMIT 5` is invalid in standard ANSI SQL). 
+
+To prevent developers from generating invalid SQL, Django's QuerySet explicitly forbids calling `.delete()`, `.filter()`, or `.annotate()` on any QuerySet that has already been sliced using Python slice notation (`[:excess]`).
+
+### 🛠️ The Fix Applied
+
+We evaluated the slice into an explicit list of primary key integers first, and then passed that list into a standard `.filter(id__in=...).delete()` call:
+
+#### Before (Fails with AssertionError):
+```python
+# Slicing followed by direct delete() is forbidden in Django ORM
+conv.messages.order_by('timestamp')[:excess].delete()
+```
+
+#### After (Safe & Efficient Two-Step Prune):
+```python
+total = self.messages.count()
+if total > max_count:
+    excess = total - max_count
+    # 1. Fetch only the primary keys of the oldest excess messages
+    oldest_ids = list(
+        self.messages.order_by('timestamp')
+        .values_list('id', flat=True)[:excess]
+    )
+    # 2. Delete safely by primary key set
+    if oldest_ids:
+        self.messages.filter(id__in=oldest_ids).delete()
+```
+
+### 🎯 Key Takeaway
+Never call `.delete()` directly on a sliced Django QuerySet. Always extract the target IDs via `.values_list('id', flat=True)` and delete using `filter(id__in=...)`.
+
+---
+
 ## Summary Matrix
 
 | Issue # | Domain | Root Cause | Fix Summary |
@@ -359,3 +660,9 @@ Production WebSocket clients must never be "one-shot". They must always feature 
 | **3** | Web Server / Nginx | `/home/ubuntu` had `750` permissions, blocking `www-data` | Set `chmod 755 /home/ubuntu` for directory traversal |
 | **4** | Channels / Redis | `redis-py` socket timeout conflicted with 5s `BZPOPMIN` | Used `redis://` URL with `socket_timeout: 15` and keepalive |
 | **5** | Frontend / Vue 3 | Ephemeral RAM state + lack of reconnect loop | Added `sessionStorage` history + 2s exponential auto-reconnect |
+| **6** | Auth / Django | Multi-backend collision on `login()` without explicit backend | Added `backend='chat.backends.EmailOrUsernameModelBackend'` argument |
+| **7** | SMTP / Brevo | Relay sender envelope mismatch (unverified from-address) | Verified sender in Brevo console; configured TLS port 587 |
+| **8** | UI / Responsive | Missing `white-space: nowrap` & `min-width: 0` in flex header | Enforced nowrap on buttons; collapsed labels on <= 480px |
+| **9** | UI / Desktop | Single-column mobile container stranded on widescreen monitors | Built 2-pane split-hero layout with 2-column form grids |
+| **10** | Database / ORM | Django `AssertionError` when deleting sliced QuerySet | Evaluated IDs into Python list; deleted via `filter(id__in=...)` |
+
