@@ -3,330 +3,875 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Tuko Chat | Login & Sign Up</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Tuko Chat | Sign in or create an account</title>
+
     <!-- PWA Meta Tags -->
     <link rel="manifest" href="{% static 'chat/manifest.json' %}">
     <meta name="theme-color" content="#0f172a">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="stylesheet" href="{% static 'chat/style.css' %}?v=7">
+    <link rel="stylesheet" href="{% static 'chat/style.css' %}?v=8">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 
     <style>
-        .auth-wrapper {
+        :root {
+            --bg: #0f172a;
+            --surface: #1e293b;
+            --field: #0b1120;
+            --line: #334155;
+            --text: #f8fafc;
+            --muted: #94a3b8;
+            --accent: #38bdf8;
+            --accent-ink: #0f172a;
+            --accent-blue: #3b82f6;
+            --accent-gradient: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
+            --danger: #ef4444;
+            --ok: #22c55e;
+            --font-display: "Bricolage Grotesque", "Trebuchet MS", system-ui, sans-serif;
+            --font-body: "DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html {
+            -webkit-text-size-adjust: 100%;
+        }
+
+        body {
+            font-family: var(--font-body);
+            background: var(--bg);
+            color: var(--text);
             min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-            background: #0f172a;
+            min-height: 100dvh;
+            line-height: 1.5;
+            -webkit-font-smoothing: antialiased;
         }
-        .auth-container {
-            width: 100%;
-            max-width: 460px;
-            background: #1e293b;
-            border: 1px solid #334155;
-            border-radius: 20px;
-            box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.6);
-            overflow: hidden;
-        }
-        .auth-header {
-            padding: 30px 24px 20px 24px;
-            text-align: center;
-            border-bottom: 1px solid #334155;
-            background: rgba(15, 23, 42, 0.4);
-        }
-        .auth-title {
-            font-size: 1.85rem;
-            font-weight: 800;
-            background: linear-gradient(135deg, #38bdf8 0%, #818cf8 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            margin-bottom: 6px;
-        }
-        .auth-subtitle {
-            color: #94a3b8;
-            font-size: 0.88rem;
-        }
-        .auth-tabs {
-            display: flex;
-            background: #0f172a;
-            border-bottom: 1px solid #334155;
-        }
-        .auth-tab {
-            flex: 1;
-            padding: 14px 10px;
-            text-align: center;
-            font-size: 0.9rem;
+
+        a {
+            color: var(--accent);
             font-weight: 600;
-            color: #64748b;
-            text-decoration: none;
-            cursor: pointer;
-            border-bottom: 2px solid transparent;
-            transition: all 0.2s;
-        }
-        .auth-tab.active {
-            color: #38bdf8;
-            border-bottom-color: #38bdf8;
-            background: rgba(30, 41, 59, 0.5);
-        }
-        .auth-tab:hover:not(.active) {
-            color: #94a3b8;
-        }
-        .auth-body {
-            padding: 28px 24px;
-        }
-        .form-group {
-            margin-bottom: 18px;
-        }
-        .form-label {
-            display: block;
-            font-size: 0.8rem;
-            font-weight: 600;
-            color: #94a3b8;
-            margin-bottom: 6px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-        .form-input {
-            width: 100%;
-            background: #0f172a;
-            border: 1px solid #334155;
-            border-radius: 10px;
-            padding: 12px 14px;
-            color: #f8fafc;
-            font-size: 0.95rem;
-            outline: none;
-            transition: border-color 0.2s, box-shadow 0.2s;
-        }
-        .form-input:focus {
-            border-color: #38bdf8;
-            box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15);
-        }
-        .btn-submit {
-            width: 100%;
-            background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
-            color: #ffffff;
-            border: none;
-            border-radius: 10px;
-            padding: 14px;
-            font-size: 1rem;
-            font-weight: 600;
-            cursor: pointer;
-            margin-top: 10px;
-            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
-            transition: opacity 0.2s, transform 0.1s;
-        }
-        .btn-submit:hover {
-            opacity: 0.95;
-            transform: translateY(-1px);
-        }
-        .btn-submit:active {
-            transform: translateY(0);
-        }
-        .banner {
-            padding: 10px 14px;
-            border-radius: 8px;
-            font-size: 0.88rem;
-            margin-bottom: 18px;
-            text-align: left;
-        }
-        .banner-error {
-            background: rgba(239, 68, 68, 0.15);
-            border: 1px solid #ef4444;
-            color: #fca5a5;
-        }
-        .banner-success {
-            background: rgba(34, 197, 94, 0.15);
-            border: 1px solid #22c55e;
-            color: #86efac;
-        }
-        .auth-footer-links {
-            margin-top: 18px;
-            display: flex;
-            justify-content: space-between;
-            font-size: 0.85rem;
-        }
-        .auth-footer-links a {
-            color: #38bdf8;
             text-decoration: none;
         }
-        .auth-footer-links a:hover {
+
+        a:hover {
             text-decoration: underline;
         }
-        /* Avatar Preset Picker */
-        .avatar-picker-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 10px;
-            margin-top: 8px;
+
+        :focus-visible {
+            outline: 3px solid var(--accent);
+            outline-offset: 2px;
         }
-        .avatar-option {
-            aspect-ratio: 1;
-            border-radius: 50%;
+
+        /* =====================================================================
+           PAGE LAYOUT  (desktop: two panes side by side, phone: single column)
+           ==================================================================== */
+        html, body {
+            width: 100%;
+        }
+
+        body {
+            display: block; /* guards against a flex/grid body rule in style.css */
+        }
+
+        .auth-page {
+            width: 100%;
+            min-height: 100vh;
+            min-height: 100dvh;
+            display: grid;
+            grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+        }
+
+        /* =====================================================================
+           SHOWCASE PANE (desktop and wide tablet)
+           ==================================================================== */
+        .showcase {
+            background: var(--bg);
+            padding: clamp(36px, 5vw, 72px);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            gap: 40px;
+            border-right: 1px solid var(--line);
+        }
+
+        .brand {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            font-family: var(--font-display);
+            font-weight: 800;
+            font-size: 1.25rem;
+            color: var(--text);
+        }
+
+        .brand-mark {
+            width: 34px;
+            height: 34px;
+            border-radius: 10px;
+            background: var(--accent-gradient);
+            color: #ffffff;
+            display: grid;
+            place-items: center;
+            font-size: 1.1rem;
+        }
+
+        .showcase-copy {
+            max-width: 34rem;
+        }
+
+        .showcase-headline {
+            font-family: var(--font-display);
+            font-weight: 800;
+            font-size: clamp(2.8rem, 5.2vw, 4.8rem);
+            line-height: 1;
+            letter-spacing: -0.03em;
+            margin-bottom: 18px;
+        }
+
+        .showcase-desc {
+            font-size: 1.08rem;
+            color: var(--muted);
+            max-width: 30rem;
+            margin-bottom: 32px;
+        }
+
+        .feature-list {
+            list-style: none;
+            display: grid;
+            gap: 14px;
+            max-width: 30rem;
+        }
+
+        .feature-list li {
+            padding-left: 16px;
+            border-left: 3px solid var(--accent);
+        }
+
+        .feature-list strong {
+            display: block;
+            font-weight: 600;
+            font-size: 0.98rem;
+        }
+
+        .feature-list span {
+            color: var(--muted);
+            font-size: 0.9rem;
+        }
+
+        /* Conversation preview: the one memorable element on the page */
+        .convo {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-width: 30rem;
+        }
+
+        .bubble {
+            max-width: 82%;
+            padding: 11px 15px;
+            border-radius: 18px;
+            font-size: 0.95rem;
+            line-height: 1.4;
+            opacity: 0;
+            transform: translateY(8px);
+            animation: bubble-in 0.5s ease forwards;
+        }
+
+        .bubble-name {
+            display: block;
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: var(--accent);
+            margin-bottom: 2px;
+        }
+
+        .bubble.in {
+            align-self: flex-start;
+            background: var(--surface);
+            border: 1px solid var(--line);
+            border-bottom-left-radius: 4px;
+            animation-delay: 0.3s;
+        }
+
+        .bubble.out {
+            align-self: flex-end;
+            background: var(--accent-gradient);
+            color: #ffffff;
+            font-weight: 500;
+            border-bottom-right-radius: 4px;
+            animation-delay: 1.1s;
+        }
+
+        .bubble.in.second {
+            animation-delay: 1.9s;
+        }
+
+        @keyframes bubble-in {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* =====================================================================
+           FORM PANE
+           ==================================================================== */
+        .form-pane {
+            background: var(--surface);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.2rem;
-            font-weight: 700;
+            padding: clamp(28px, 5vw, 72px);
+        }
+
+        .form-inner {
+            width: 100%;
+            max-width: 440px;
+        }
+
+        .mobile-brand {
+            display: none;
+        }
+
+        .form-title {
+            font-family: var(--font-display);
+            font-weight: 800;
+            font-size: 1.9rem;
+            line-height: 1.15;
+            letter-spacing: -0.02em;
+            margin-bottom: 6px;
+        }
+
+        .form-sub {
+            color: var(--muted);
+            font-size: 0.97rem;
+            margin-bottom: 24px;
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            gap: 4px;
+            padding: 4px;
+            background: var(--field);
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            margin-bottom: 28px;
+        }
+
+        .tab {
+            flex: 1;
+            text-align: center;
+            padding: 11px 10px;
+            border-radius: 10px;
+            font-size: 0.92rem;
+            font-weight: 600;
+            color: var(--muted);
+            transition: background-color 0.2s, color 0.2s;
+        }
+
+        .tab:hover {
+            color: var(--text);
+            text-decoration: none;
+        }
+
+        .tab.active {
+            background: #3b82f6;
             color: #ffffff;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.35);
+        }
+
+        /* Fields */
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 0;
+        }
+
+        .field {
+            margin-bottom: 18px;
+        }
+
+        .field-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            margin-bottom: 7px;
+        }
+
+        .label {
+            display: block;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 7px;
+        }
+
+        .field-head .label {
+            margin-bottom: 0;
+        }
+
+        .field-head a {
+            font-size: 0.85rem;
+        }
+
+        .input {
+            width: 100%;
+            min-height: 50px;
+            background: var(--field);
+            border: 1.5px solid var(--line);
+            border-radius: 12px;
+            padding: 12px 14px;
+            color: var(--text);
+            font-family: inherit;
+            font-size: 1rem; /* 16px keeps iOS from zooming on focus */
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .input::placeholder {
+            color: #64748b;
+        }
+
+        .input:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.25);
+        }
+
+        .input:user-invalid {
+            border-color: var(--danger);
+        }
+
+        /* Keep browser autofill on-theme instead of bright white */
+        .input:-webkit-autofill,
+        .input:-webkit-autofill:hover,
+        .input:-webkit-autofill:focus {
+            -webkit-text-fill-color: var(--text);
+            caret-color: var(--text);
+            -webkit-box-shadow: 0 0 0 1000px var(--field) inset;
+            transition: background-color 9999s ease-in-out 0s;
+        }
+
+        .password-wrap {
+            position: relative;
+        }
+
+        .password-wrap .input {
+            padding-right: 70px;
+        }
+
+        .toggle-pw {
+            position: absolute;
+            top: 50%;
+            right: 8px;
+            transform: translateY(-50%);
+            background: transparent;
+            border: 0;
+            color: var(--muted);
+            font-family: inherit;
+            font-size: 0.85rem;
+            font-weight: 600;
+            padding: 8px 10px;
+            border-radius: 8px;
             cursor: pointer;
-            border: 2px solid transparent;
-            transition: transform 0.15s, border-color 0.15s;
-            user-select: none;
         }
+
+        .toggle-pw:hover {
+            color: var(--text);
+        }
+
+        .field-hint {
+            font-size: 0.82rem;
+            color: var(--danger);
+            margin-top: 6px;
+            min-height: 1.2em;
+        }
+
+        .btn {
+            display: block;
+            width: 100%;
+            min-height: 52px;
+            background: var(--accent-gradient);
+            color: #ffffff;
+            border: 0;
+            border-radius: 12px;
+            padding: 14px 18px;
+            font-family: inherit;
+            font-size: 1rem;
+            font-weight: 600;
+            text-align: center;
+            text-decoration: none;
+            cursor: pointer;
+            margin-top: 8px;
+            box-shadow: 0 4px 14px rgba(59, 130, 246, 0.35);
+            transition: transform 0.15s, filter 0.15s;
+        }
+
+        .btn:hover {
+            filter: brightness(1.06);
+            text-decoration: none;
+        }
+
+        .btn:active {
+            transform: scale(0.99);
+        }
+
+        /* Avatar picker */
+        .avatar-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .avatar-head .label {
+            margin-bottom: 0;
+        }
+
+        .avatar-pill {
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: var(--accent);
+        }
+
+        .avatar-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            padding: 4px;
+        }
+
+        .avatar-option {
+            aspect-ratio: 1;
+            width: 100%;
+            border: 0;
+            border-radius: 50%;
+            display: grid;
+            place-items: center;
+            font-size: 1.5rem;
+            cursor: pointer;
+            transition: transform 0.15s, box-shadow 0.15s;
+        }
+
         .avatar-option:hover {
-            transform: scale(1.08);
+            transform: scale(1.06);
         }
+
         .avatar-option.selected {
-            border-color: #38bdf8;
-            box-shadow: 0 0 12px rgba(56, 189, 248, 0.6);
-            transform: scale(1.1);
+            box-shadow: 0 0 0 3px var(--surface), 0 0 0 6px var(--accent);
+            transform: scale(1.04);
+        }
+
+        /* Banners */
+        .banner {
+            padding: 13px 15px;
+            border-radius: 12px;
+            font-size: 0.92rem;
+            margin-bottom: 20px;
+            border: 1px solid;
+        }
+
+        .banner-error {
+            background: rgba(239, 68, 68, 0.15);
+            border-color: #ef4444;
+            color: #fca5a5;
+        }
+
+        .banner-success {
+            background: rgba(34, 197, 94, 0.15);
+            border-color: #22c55e;
+            color: #86efac;
+        }
+
+        .switch-prompt {
+            margin-top: 24px;
+            text-align: center;
+            font-size: 0.92rem;
+            color: var(--muted);
+        }
+
+        /* =====================================================================
+           PHONE AND SMALL TABLET
+           ==================================================================== */
+        @media (max-width: 900px) {
+            .auth-page {
+                grid-template-columns: 1fr;
+            }
+
+            .showcase {
+                display: none;
+            }
+
+            .form-pane {
+                align-items: flex-start;
+                padding: calc(28px + env(safe-area-inset-top)) 22px calc(32px + env(safe-area-inset-bottom));
+            }
+
+            .form-inner {
+                max-width: 480px;
+                margin: 0 auto;
+            }
+
+            .mobile-brand {
+                display: flex;
+                margin-bottom: 28px;
+            }
+
+            .form-title {
+                font-size: 1.65rem;
+            }
+        }
+
+        @media (max-width: 520px) {
+            .avatar-grid {
+                gap: 10px;
+            }
+
+            .avatar-option {
+                font-size: 1.35rem;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .bubble {
+                animation: none;
+                opacity: 1;
+                transform: none;
+            }
+
+            * {
+                transition: none !important;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="auth-wrapper">
-        <div class="auth-container">
-            <div class="auth-header">
-                <div class="auth-title">⚡ Tuko Chat</div>
-                <div class="auth-subtitle">Real-time messaging platform & groups</div>
+    <div class="auth-page">
+
+        <!-- ===============================================================
+             SHOWCASE (laptop / desktop only)
+             =============================================================== -->
+        <aside class="showcase" aria-label="About Tuko Chat">
+            <div class="brand">
+                <span class="brand-mark" aria-hidden="true">⚡</span>
+                Tuko Chat
             </div>
 
-            <!-- Tab Navigation -->
-            <div class="auth-tabs">
-                <a href="{% url 'chat:login' %}" class="auth-tab {% if active_tab == 'login' %}active{% endif %}">Sign In</a>
-                <a href="{% url 'chat:register' %}" class="auth-tab {% if active_tab == 'register' %}active{% endif %}">Create Account</a>
-                {% if active_tab == 'forgot' %}
-                <span class="auth-tab active">Reset Password</span>
-                {% endif %}
+            <div class="showcase-copy">
+                <h1 class="showcase-headline">Tuko pamoja.</h1>
+                <p class="showcase-desc">
+                    Join public channels or message people directly. Every message arrives the moment it is sent.
+                </p>
+
+                <ul class="feature-list">
+                    <li>
+                        <strong>Instant delivery</strong>
+                        <span>No refreshing. Messages show up as they happen.</span>
+                    </li>
+                    <li>
+                        <strong>Channels and direct messages</strong>
+                        <span>Start your own group or talk one-on-one.</span>
+                    </li>
+                    <li>
+                        <strong>Install it on any device</strong>
+                        <span>Add Tuko Chat to your Android, iPhone or computer like an app.</span>
+                    </li>
+                </ul>
             </div>
 
-            <div class="auth-body">
+            <div class="convo" aria-hidden="true">
+                <div class="bubble in">
+                    <span class="bubble-name">Brian</span>
+                    Karibu! Send a message and watch it land.
+                </div>
+                <div class="bubble out">Just made my account. Hi everyone!</div>
+                <div class="bubble in second">
+                    <span class="bubble-name">Amina</span>
+                    Welcome in. We're in the general channel.
+                </div>
+            </div>
+        </aside>
+
+        <!-- ===============================================================
+             FORM PANE
+             =============================================================== -->
+        <main class="form-pane">
+            <div class="form-inner">
+
+                <div class="brand mobile-brand">
+                    <span class="brand-mark" aria-hidden="true">⚡</span>
+                    Tuko Chat
+                </div>
+
+                <nav class="tabs" aria-label="Account options">
+                    <a href="{% url 'chat:login' %}" class="tab {% if active_tab == 'login' %}active{% endif %}" {% if active_tab == 'login' %}aria-current="page"{% endif %}>Sign in</a>
+                    <a href="{% url 'chat:register' %}" class="tab {% if active_tab == 'register' %}active{% endif %}" {% if active_tab == 'register' %}aria-current="page"{% endif %}>Create account</a>
+                    {% if active_tab == 'forgot' %}
+                    <span class="tab active" aria-current="page">Reset password</span>
+                    {% endif %}
+                </nav>
+
                 {% if error_message %}
-                <div class="banner banner-error">{{ error_message }}</div>
+                <div class="banner banner-error" role="alert">{{ error_message }}</div>
                 {% endif %}
 
                 {% if success_message %}
-                <div class="banner banner-success">{{ success_message }}</div>
+                <div class="banner banner-success" role="status">{{ success_message }}</div>
                 {% endif %}
 
-                <!-- ======================================================= -->
-                <!-- SIGN IN TAB (Supports Username OR Email) -->
-                <!-- ======================================================= -->
+                <!-- ===========================================================
+                     SIGN IN (username or email)
+                     =========================================================== -->
                 {% if active_tab == 'login' %}
+                <h2 class="form-title">Welcome back</h2>
+                <p class="form-sub">Sign in to pick up your conversations.</p>
+
                 <form method="POST" action="{% url 'chat:login' %}">
                     {% csrf_token %}
-                    <div class="form-group">
-                        <label class="form-label" for="login_id">Username or Email</label>
-                        <input type="text" id="login_id" name="login_id" class="form-input" placeholder="e.g. brian or brian@gmail.com" required autofocus>
+                    <div class="field">
+                        <label class="label" for="login_id">Username or email</label>
+                        <input
+                            type="text"
+                            id="login_id"
+                            name="login_id"
+                            class="input"
+                            placeholder="brian or brian@gmail.com"
+                            autocomplete="username"
+                            autocapitalize="none"
+                            autocorrect="off"
+                            spellcheck="false"
+                            required
+                            autofocus
+                        >
                     </div>
 
-                    <div class="form-group">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                            <label class="form-label" for="password" style="margin-bottom: 0;">Password</label>
-                            <a href="{% url 'chat:forgot_password' %}" style="font-size: 0.78rem; color: #38bdf8; text-decoration: none;">Forgot Password?</a>
+                    <div class="field">
+                        <div class="field-head">
+                            <label class="label" for="password">Password</label>
+                            <a href="{% url 'chat:forgot_password' %}">Forgot password?</a>
                         </div>
-                        <input type="password" id="password" name="password" class="form-input" placeholder="Enter your password" required>
+                        <div class="password-wrap">
+                            <input
+                                type="password"
+                                id="password"
+                                name="password"
+                                class="input"
+                                placeholder="Enter your password"
+                                autocomplete="current-password"
+                                required
+                            >
+                            <button type="button" class="toggle-pw" data-toggle-password="password" aria-label="Show password">Show</button>
+                        </div>
                     </div>
 
-                    <button type="submit" class="btn-submit">Sign In &rarr;</button>
+                    <button type="submit" class="btn">Sign in</button>
                 </form>
 
-                <div class="auth-footer-links" style="justify-content: center; margin-top: 22px;">
-                    <span style="color: #64748b;">Don't have an account?</span>
-                    &nbsp;<a href="{% url 'chat:register' %}">Create one free</a>
-                </div>
+                <p class="switch-prompt">
+                    New to Tuko Chat? <a href="{% url 'chat:register' %}">Create a free account</a>
+                </p>
 
-                <!-- ======================================================= -->
-                <!-- SIGN UP TAB -->
-                <!-- ======================================================= -->
+                <!-- ===========================================================
+                     REGISTER
+                     =========================================================== -->
                 {% elif active_tab == 'register' %}
+                <h2 class="form-title">Create your account</h2>
+                <p class="form-sub">It takes less than a minute.</p>
+
                 <form method="POST" action="{% url 'chat:register' %}" id="registerForm">
                     {% csrf_token %}
                     <input type="hidden" name="avatar_id" id="selectedAvatar" value="avatar_1">
 
-                    <div class="form-group">
-                        <label class="form-label" for="username">Username</label>
-                        <input type="text" id="username" name="username" class="form-input" placeholder="Unique username (e.g. player1)" maxlength="25" required autofocus>
-                    </div>
+                    <div class="grid-2">
+                        <div class="field">
+                            <label class="label" for="username">Username</label>
+                            <input
+                                type="text"
+                                id="username"
+                                name="username"
+                                class="input"
+                                placeholder="player1"
+                                maxlength="25"
+                                autocomplete="off"
+                                autocapitalize="none"
+                                autocorrect="off"
+                                spellcheck="false"
+                                required
+                                autofocus
+                            >
+                        </div>
 
-                    <div class="form-group">
-                        <label class="form-label" for="email">Email Address</label>
-                        <input type="email" id="email" name="email" class="form-input" placeholder="name@domain.com (for password recovery)" required>
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label" for="password">Password</label>
-                        <input type="password" id="password" name="password" class="form-input" placeholder="At least 6 characters" required>
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label" for="confirm_password">Confirm Password</label>
-                        <input type="password" id="confirm_password" name="confirm_password" class="form-input" placeholder="Re-type password" required>
-                    </div>
-
-                    <!-- Preset Avatar Selector -->
-                    <div class="form-group">
-                        <label class="form-label">Choose Your Avatar</label>
-                        <div class="avatar-picker-grid">
-                            <div class="avatar-option selected" data-avatar="avatar_1" style="background: linear-gradient(135deg, #3b82f6, #1d4ed8);">🦁</div>
-                            <div class="avatar-option" data-avatar="avatar_2" style="background: linear-gradient(135deg, #10b981, #047857);">🦅</div>
-                            <div class="avatar-option" data-avatar="avatar_3" style="background: linear-gradient(135deg, #8b5cf6, #6d28d9);">⚡</div>
-                            <div class="avatar-option" data-avatar="avatar_4" style="background: linear-gradient(135deg, #f59e0b, #b45309);">🔥</div>
-                            <div class="avatar-option" data-avatar="avatar_5" style="background: linear-gradient(135deg, #ec4899, #be185d);">👑</div>
-                            <div class="avatar-option" data-avatar="avatar_6" style="background: linear-gradient(135deg, #06b6d4, #0e7490);">🚀</div>
-                            <div class="avatar-option" data-avatar="avatar_7" style="background: linear-gradient(135deg, #f97316, #c2410c);">🎯</div>
-                            <div class="avatar-option" data-avatar="avatar_8" style="background: linear-gradient(135deg, #6366f1, #4338ca);">💎</div>
+                        <div class="field">
+                            <label class="label" for="email">Email address</label>
+                            <input
+                                type="email"
+                                id="email"
+                                name="email"
+                                class="input"
+                                placeholder="name@domain.com"
+                                autocomplete="email"
+                                required
+                            >
                         </div>
                     </div>
 
-                    <button type="submit" class="btn-submit">Complete Registration &rarr;</button>
-                </form>
+                    <div class="grid-2">
+                        <div class="field">
+                            <label class="label" for="password">Password</label>
+                            <div class="password-wrap">
+                                <input
+                                    type="password"
+                                    id="password"
+                                    name="password"
+                                    class="input"
+                                    placeholder="At least 6 characters"
+                                    minlength="6"
+                                    autocomplete="new-password"
+                                    required
+                                >
+                                <button type="button" class="toggle-pw" data-toggle-password="password" aria-label="Show password">Show</button>
+                            </div>
+                        </div>
 
-                <div class="auth-footer-links" style="justify-content: center; margin-top: 22px;">
-                    <span style="color: #64748b;">Already have an account?</span>
-                    &nbsp;<a href="{% url 'chat:login' %}">Sign in</a>
-                </div>
+                        <div class="field">
+                            <label class="label" for="confirm_password">Confirm password</label>
+                            <div class="password-wrap">
+                                <input
+                                    type="password"
+                                    id="confirm_password"
+                                    name="confirm_password"
+                                    class="input"
+                                    placeholder="Type it again"
+                                    autocomplete="new-password"
+                                    required
+                                >
+                                <button type="button" class="toggle-pw" data-toggle-password="confirm_password" aria-label="Show password">Show</button>
+                            </div>
+                        </div>
+                    </div>
+                    <p class="field-hint" id="passwordHint" aria-live="polite" style="margin-top: -8px; margin-bottom: 10px;"></p>
 
-                <!-- ======================================================= -->
-                <!-- FORGOT PASSWORD TAB -->
-                <!-- ======================================================= -->
-                {% elif active_tab == 'forgot' %}
-                <form method="POST" action="{% url 'chat:forgot_password' %}">
-                    {% csrf_token %}
-                    <p style="color: #94a3b8; font-size: 0.9rem; margin-bottom: 18px; line-height: 1.5;">
-                        Enter your account email. We will send you a secure link to reset your password via <strong>Brevo</strong>.
-                    </p>
-
-                    <div class="form-group">
-                        <label class="form-label" for="email">Account Email Address</label>
-                        <input type="email" id="email" name="email" class="form-input" placeholder="e.g. yourname@gmail.com" required autofocus>
+                    <div class="field">
+                        <div class="avatar-head">
+                            <span class="label" id="avatarLabelText">Choose your avatar</span>
+                            <span class="avatar-pill" id="selectedAvatarLabel">🦁 Lion selected</span>
+                        </div>
+                        <div class="avatar-grid" role="group" aria-labelledby="avatarLabelText">
+                            <button type="button" class="avatar-option selected" data-avatar="avatar_1" data-name="🦁 Lion selected" aria-pressed="true" style="background: linear-gradient(135deg, #3b82f6, #1d4ed8);" title="Lion" aria-label="Lion">🦁</button>
+                            <button type="button" class="avatar-option" data-avatar="avatar_2" data-name="🦅 Eagle selected" aria-pressed="false" style="background: linear-gradient(135deg, #10b981, #047857);" title="Eagle" aria-label="Eagle">🦅</button>
+                            <button type="button" class="avatar-option" data-avatar="avatar_3" data-name="⚡ Bolt selected" aria-pressed="false" style="background: linear-gradient(135deg, #8b5cf6, #6d28d9);" title="Bolt" aria-label="Bolt">⚡</button>
+                            <button type="button" class="avatar-option" data-avatar="avatar_4" data-name="🔥 Fire selected" aria-pressed="false" style="background: linear-gradient(135deg, #f59e0b, #b45309);" title="Fire" aria-label="Fire">🔥</button>
+                            <button type="button" class="avatar-option" data-avatar="avatar_5" data-name="👑 Crown selected" aria-pressed="false" style="background: linear-gradient(135deg, #ec4899, #be185d);" title="Crown" aria-label="Crown">👑</button>
+                            <button type="button" class="avatar-option" data-avatar="avatar_6" data-name="🚀 Rocket selected" aria-pressed="false" style="background: linear-gradient(135deg, #06b6d4, #0e7490);" title="Rocket" aria-label="Rocket">🚀</button>
+                            <button type="button" class="avatar-option" data-avatar="avatar_7" data-name="🎯 Target selected" aria-pressed="false" style="background: linear-gradient(135deg, #f97316, #c2410c);" title="Target" aria-label="Target">🎯</button>
+                            <button type="button" class="avatar-option" data-avatar="avatar_8" data-name="💎 Diamond selected" aria-pressed="false" style="background: linear-gradient(135deg, #6366f1, #4338ca);" title="Diamond" aria-label="Diamond">💎</button>
+                        </div>
                     </div>
 
-                    <button type="submit" class="btn-submit">Send Password Reset Link &rarr;</button>
+                    <button type="submit" class="btn">Create account</button>
                 </form>
 
-                <div class="auth-footer-links" style="justify-content: center; margin-top: 22px;">
-                    <a href="{% url 'chat:login' %}">&larr; Back to Sign In</a>
-                </div>
+                <p class="switch-prompt">
+                    Already have an account? <a href="{% url 'chat:login' %}">Sign in</a>
+                </p>
+
+                <!-- ===========================================================
+                     FORGOT PASSWORD
+                     =========================================================== -->
+                {% elif active_tab == 'forgot' %}
+                <h2 class="form-title">Reset your password</h2>
+                <p class="form-sub">Enter the email you signed up with and we will send you a link to choose a new password.</p>
+
+                <form method="POST" action="{% url 'chat:forgot_password' %}">
+                    {% csrf_token %}
+                    <div class="field">
+                        <label class="label" for="email">Account email</label>
+                        <input
+                            type="email"
+                            id="email"
+                            name="email"
+                            class="input"
+                            placeholder="yourname@gmail.com"
+                            autocomplete="email"
+                            required
+                            autofocus
+                        >
+                    </div>
+
+                    <button type="submit" class="btn">Send reset link</button>
+                </form>
+
+                <p class="switch-prompt">
+                    <a href="{% url 'chat:login' %}">Back to sign in</a>
+                </p>
                 {% endif %}
             </div>
-        </div>
+        </main>
     </div>
 
     <script>
-        // Avatar selection interaction
-        document.querySelectorAll('.avatar-option').forEach(el => {
-            el.addEventListener('click', () => {
-                document.querySelectorAll('.avatar-option').forEach(item => item.classList.remove('selected'));
-                el.classList.add('selected');
-                const avatarInput = document.getElementById('selectedAvatar');
-                if (avatarInput) {
-                    avatarInput.value = el.dataset.avatar;
-                }
+        // Show / hide password buttons
+        document.querySelectorAll('[data-toggle-password]').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var input = document.getElementById(btn.dataset.togglePassword);
+                if (!input) return;
+                var show = input.type === 'password';
+                input.type = show ? 'text' : 'password';
+                btn.textContent = show ? 'Hide' : 'Show';
+                btn.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
             });
         });
+
+        // Avatar selection
+        document.querySelectorAll('.avatar-option').forEach(function (el) {
+            el.addEventListener('click', function () {
+                document.querySelectorAll('.avatar-option').forEach(function (item) {
+                    item.classList.remove('selected');
+                    item.setAttribute('aria-pressed', 'false');
+                });
+                el.classList.add('selected');
+                el.setAttribute('aria-pressed', 'true');
+
+                var avatarInput = document.getElementById('selectedAvatar');
+                if (avatarInput) avatarInput.value = el.dataset.avatar;
+
+                var label = document.getElementById('selectedAvatarLabel');
+                if (label && el.dataset.name) label.textContent = el.dataset.name;
+            });
+        });
+
+        // Password match check on the register form
+        (function () {
+            var form = document.getElementById('registerForm');
+            if (!form) return;
+            var pw = document.getElementById('password');
+            var confirm = document.getElementById('confirm_password');
+            var hint = document.getElementById('passwordHint');
+
+            function check() {
+                var mismatch = confirm.value.length > 0 && pw.value !== confirm.value;
+                confirm.setCustomValidity(mismatch ? 'Passwords do not match' : '');
+                hint.textContent = mismatch ? 'Passwords do not match yet.' : '';
+            }
+
+            pw.addEventListener('input', check);
+            confirm.addEventListener('input', check);
+            form.addEventListener('submit', function (e) {
+                check();
+                if (!form.checkValidity()) {
+                    e.preventDefault();
+                    form.reportValidity();
+                }
+            });
+        })();
     </script>
 </body>
 </html>
