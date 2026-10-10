@@ -1,0 +1,1534 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Tuko Chat</title>
+    <!-- PWA Manifest & Meta Tags -->
+    <link rel="manifest" href="{% static 'chat/manifest.json' %}">
+    <meta name="theme-color" content="#1e293b">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="stylesheet" href="{% static 'chat/style.css' %}?v=8">
+    <!-- Vue 3 via CDN -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background-color: #0f172a;
+            color: #f8fafc;
+            height: 100vh;
+            height: 100dvh;
+            overflow: hidden;
+        }
+
+        #app {
+            height: 100%;
+            display: flex;
+            background: #0f172a;
+        }
+
+        /* Full Dashboard Layout */
+        .dashboard-container {
+            display: flex;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: #0f172a;
+        }
+
+        /* =====================================================================
+           LEFT SIDEBAR (CONVERSATIONS LIST & USER PROFILE)
+           ===================================================================== */
+        .sidebar {
+            width: 360px;
+            min-width: 320px;
+            background: #1e293b;
+            border-right: 1px solid #334155;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            z-index: 20;
+            transition: transform 0.25s ease;
+        }
+
+        /* Current User Header */
+        .user-header {
+            padding: 16px;
+            background: #0f172a;
+            border-bottom: 1px solid #334155;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .user-profile-summary {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-width: 0;
+        }
+
+        .avatar-circle {
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            color: #ffffff;
+            flex-shrink: 0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+            user-select: none;
+        }
+
+        .user-meta {
+            min-width: 0;
+        }
+
+        .user-meta h3 {
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: #f8fafc;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .user-status-text {
+            font-size: 0.75rem;
+            color: #22c55e;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .status-dot-green {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #22c55e;
+            box-shadow: 0 0 6px #22c55e;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-icon-action {
+            background: #334155;
+            border: 1px solid #475569;
+            color: #94a3b8;
+            padding: 6px 10px;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            transition: all 0.2s;
+        }
+
+        .btn-icon-action:hover {
+            background: #475569;
+            color: #ffffff;
+        }
+
+        /* User Search Area */
+        .search-container {
+            padding: 12px 16px;
+            border-bottom: 1px solid #334155;
+            position: relative;
+        }
+
+        .search-input {
+            width: 100%;
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 10px;
+            padding: 10px 14px 10px 36px;
+            color: #f8fafc;
+            font-size: 0.9rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .search-input:focus {
+            border-color: #38bdf8;
+        }
+
+        .search-icon-svg {
+            position: absolute;
+            left: 28px;
+            top: 22px;
+            color: #64748b;
+            pointer-events: none;
+        }
+
+        /* Search Dropdown Results */
+        .search-dropdown {
+            position: absolute;
+            top: calc(100% + 4px);
+            left: 16px;
+            right: 16px;
+            background: #0f172a;
+            border: 1px solid #38bdf8;
+            border-radius: 10px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.7);
+            max-height: 240px;
+            overflow-y: auto;
+            z-index: 50;
+        }
+
+        .search-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 14px;
+            cursor: pointer;
+            border-bottom: 1px solid #1e293b;
+            transition: background 0.15s;
+        }
+
+        .search-item:hover {
+            background: #1e293b;
+        }
+
+        .search-item-info {
+            min-width: 0;
+            flex: 1;
+        }
+
+        .search-item-name {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #f8fafc;
+        }
+
+        .search-item-sub {
+            font-size: 0.75rem;
+            color: #94a3b8;
+        }
+
+        /* Conversations Tabs (DMs vs Groups) */
+        .conv-tabs {
+            display: flex;
+            border-bottom: 1px solid #334155;
+            background: #0f172a;
+        }
+
+        .conv-tab-btn {
+            flex: 1;
+            padding: 12px 8px;
+            text-align: center;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #64748b;
+            background: transparent;
+            border: none;
+            border-bottom: 2px solid transparent;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .conv-tab-btn.active {
+            color: #38bdf8;
+            border-bottom-color: #38bdf8;
+            background: rgba(30, 41, 59, 0.4);
+        }
+
+        /* Group Create Bar */
+        .group-actions-bar {
+            padding: 10px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(15, 23, 42, 0.6);
+            border-bottom: 1px solid #334155;
+        }
+
+        .group-actions-bar span {
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #94a3b8;
+        }
+
+        .btn-new-group {
+            background: #3b82f6;
+            color: #ffffff;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 6px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        .btn-new-group:hover {
+            opacity: 0.9;
+        }
+
+        /* Conversation List */
+        .conv-list {
+            flex: 1;
+            overflow-y: auto;
+            list-style: none;
+        }
+
+        .conv-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            cursor: pointer;
+            border-bottom: 1px solid rgba(51, 65, 85, 0.3);
+            transition: background 0.15s;
+        }
+
+        .conv-item:hover {
+            background: rgba(51, 65, 85, 0.3);
+        }
+
+        .conv-item.active {
+            background: rgba(59, 130, 246, 0.15);
+            border-left: 3px solid #38bdf8;
+        }
+
+        .conv-item-content {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .conv-item-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 4px;
+        }
+
+        .conv-item-name {
+            font-size: 0.92rem;
+            font-weight: 600;
+            color: #f8fafc;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .conv-item-time {
+            font-size: 0.72rem;
+            color: #64748b;
+        }
+
+        .conv-item-last {
+            font-size: 0.8rem;
+            color: #94a3b8;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .creator-tag {
+            font-size: 0.68rem;
+            background: rgba(59, 130, 246, 0.2);
+            color: #38bdf8;
+            padding: 1px 5px;
+            border-radius: 4px;
+            margin-left: 6px;
+        }
+
+        /* =====================================================================
+           RIGHT MAIN CHAT PANE
+           ==================================================================== */
+        .chat-pane {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            background: #0f172a;
+            position: relative;
+        }
+
+        /* Active Chat Header - Spacious & Modern */
+        .chat-pane-header {
+            padding: 12px 20px;
+            background: #1e293b;
+            border-bottom: 1px solid #334155;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 14px;
+            min-height: 68px;
+            box-sizing: border-box;
+            flex-shrink: 0;
+        }
+
+        .chat-header-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-width: 0;
+            flex: 1;
+        }
+
+        .chat-header-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.15rem;
+            flex-shrink: 0;
+            color: #ffffff;
+        }
+
+        .btn-back-sidebar {
+            display: none;
+            background: transparent;
+            border: none;
+            color: #94a3b8;
+            font-size: 1.4rem;
+            cursor: pointer;
+            padding: 0 4px;
+            flex-shrink: 0;
+        }
+
+        .chat-header-meta {
+            min-width: 0;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .chat-header-title {
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: #f8fafc;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-width: 0;
+        }
+
+        .chat-header-name {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .creator-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            letter-spacing: 0.3px;
+            background: rgba(56, 189, 248, 0.15);
+            color: #38bdf8;
+            border: 1px solid rgba(56, 189, 248, 0.35);
+            padding: 2px 7px;
+            border-radius: 999px;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        .chat-header-sub {
+            font-size: 0.78rem;
+            color: #94a3b8;
+            margin-top: 2px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .chat-header-right {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+
+        .btn-header-pill {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            height: 36px;
+            padding: 0 13px;
+            border-radius: 8px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            white-space: nowrap;
+            flex-shrink: 0;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: 1px solid transparent;
+            text-decoration: none;
+        }
+
+        .btn-members-pill {
+            background: #0f172a;
+            border-color: #334155;
+            color: #cbd5e1;
+        }
+
+        .btn-members-pill:hover {
+            background: #1e293b;
+            border-color: #38bdf8;
+            color: #38bdf8;
+        }
+
+        .btn-delete-pill {
+            background: rgba(239, 68, 68, 0.12);
+            border-color: rgba(239, 68, 68, 0.35);
+            color: #fca5a5;
+        }
+
+        .btn-delete-pill:hover {
+            background: #ef4444;
+            border-color: #ef4444;
+            color: #ffffff;
+        }
+
+        /* Members Modal & Drawer Styles */
+        .members-modal-card {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 16px;
+            width: 100%;
+            max-width: 440px;
+            max-height: 82vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+            overflow: hidden;
+        }
+
+        .members-modal-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid #334155;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(15, 23, 42, 0.4);
+        }
+
+        .members-modal-body {
+            padding: 14px 18px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-height: 52vh;
+        }
+
+        .member-row-card {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 14px;
+            border-radius: 10px;
+            background: rgba(15, 23, 42, 0.5);
+            border: 1px solid rgba(51, 65, 85, 0.4);
+            transition: all 0.15s ease;
+        }
+
+        .member-row-card:hover {
+            background: rgba(30, 41, 59, 0.85);
+            border-color: #475569;
+        }
+
+        .member-info-col {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .member-name-row {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+        }
+
+        .member-username {
+            font-size: 0.92rem;
+            font-weight: 600;
+            color: #f8fafc;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .member-badge-pill {
+            font-size: 0.68rem;
+            font-weight: 700;
+            padding: 1px 7px;
+            border-radius: 999px;
+            white-space: nowrap;
+        }
+
+        .member-badge-pill.you {
+            background: rgba(59, 130, 246, 0.2);
+            color: #60a5fa;
+            border: 1px solid rgba(59, 130, 246, 0.4);
+        }
+
+        .member-badge-pill.owner {
+            background: rgba(245, 158, 11, 0.2);
+            color: #fbbf24;
+            border: 1px solid rgba(245, 158, 11, 0.4);
+        }
+
+        .member-status-line {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.74rem;
+            color: #94a3b8;
+            margin-top: 3px;
+        }
+
+        .status-indicator-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .status-indicator-dot.online {
+            background: #10b981;
+            box-shadow: 0 0 6px rgba(16, 185, 129, 0.6);
+        }
+
+        /* Messages Area */
+        .messages-area {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .empty-chat-placeholder {
+            margin: auto;
+            text-align: center;
+            color: #64748b;
+            max-width: 360px;
+        }
+
+        .message-row {
+            display: flex;
+            gap: 10px;
+            max-width: 75%;
+        }
+
+        .message-row.outgoing {
+            align-self: flex-end;
+            flex-direction: row-reverse;
+        }
+
+        .message-row.incoming {
+            align-self: flex-start;
+        }
+
+        .msg-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9rem;
+            color: #ffffff;
+            flex-shrink: 0;
+            align-self: flex-end;
+            margin-bottom: 2px;
+        }
+
+        .msg-content-wrapper {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .msg-sender-name {
+            font-size: 0.72rem;
+            font-weight: 600;
+            color: #94a3b8;
+            margin-bottom: 3px;
+            padding: 0 4px;
+        }
+
+        .msg-bubble {
+            padding: 10px 14px;
+            border-radius: 12px;
+            font-size: 0.93rem;
+            line-height: 1.45;
+            word-break: break-word;
+            position: relative;
+        }
+
+        .message-row.outgoing .msg-bubble {
+            background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
+            color: #ffffff;
+            border-bottom-right-radius: 2px;
+        }
+
+        .message-row.incoming .msg-bubble {
+            background: #1e293b;
+            color: #f8fafc;
+            border: 1px solid #334155;
+            border-bottom-left-radius: 2px;
+        }
+
+        .msg-time {
+            font-size: 0.68rem;
+            color: rgba(255, 255, 255, 0.6);
+            margin-top: 4px;
+            text-align: right;
+        }
+
+        .message-row.incoming .msg-time {
+            color: #64748b;
+        }
+
+        /* Message Input Bar */
+        .chat-input-bar {
+            padding: 14px 20px;
+            background: #1e293b;
+            border-top: 1px solid #334155;
+            display: flex;
+            gap: 10px;
+        }
+
+        .chat-input-field {
+            flex: 1;
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 10px;
+            padding: 12px 16px;
+            color: #f8fafc;
+            font-size: 0.95rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .chat-input-field:focus {
+            border-color: #38bdf8;
+        }
+
+        .btn-send-message {
+            background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
+            color: #ffffff;
+            border: none;
+            border-radius: 10px;
+            padding: 0 20px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        .btn-send-message:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Modal Overlay */
+        .modal-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(4px);
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .modal-card {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 16px;
+            width: 100%;
+            max-width: 420px;
+            padding: 24px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.8);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .modal-header h3 {
+            font-size: 1.1rem;
+            color: #f8fafc;
+        }
+
+        .btn-modal-close {
+            background: transparent;
+            border: none;
+            color: #94a3b8;
+            font-size: 1.2rem;
+            cursor: pointer;
+        }
+
+        /* Responsive Mobile Behavior */
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 100%;
+                min-width: 100%;
+            }
+
+            .chat-pane {
+                position: absolute;
+                inset: 0;
+                transform: translateX(100%);
+                transition: transform 0.25s ease;
+                z-index: 30;
+            }
+
+            .chat-pane.mobile-open {
+                transform: translateX(0);
+            }
+
+            .btn-back-sidebar {
+                display: block;
+            }
+
+            .message-row {
+                max-width: 88%;
+            }
+        }
+
+        /* Narrow screens: prevent header buttons and text from crowding */
+        @media (max-width: 480px) {
+            .chat-pane-header {
+                padding: 10px 14px;
+                gap: 8px;
+            }
+
+            .chat-header-left {
+                gap: 8px;
+            }
+
+            .chat-header-avatar {
+                width: 36px;
+                height: 36px;
+                font-size: 1rem;
+            }
+
+            .chat-header-name {
+                font-size: 0.95rem;
+                max-width: 120px;
+            }
+
+            .btn-header-pill {
+                padding: 0 9px;
+                height: 32px;
+                font-size: 0.78rem;
+                gap: 4px;
+            }
+
+            .btn-members-pill .pill-label,
+            .btn-delete-pill .pill-label {
+                display: none;
+            }
+
+            .members-modal-card {
+                max-height: 88vh;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        {% verbatim %}
+        <div class="dashboard-container">
+            <!-- ===========================================================
+                 LEFT SIDEBAR
+                 =========================================================== -->
+            <aside class="sidebar">
+                <!-- User Profile Header -->
+                <div class="user-header">
+                    <div class="user-profile-summary">
+                        <div class="avatar-circle" :style="getAvatarBg(currentUser.avatar_id)">
+                            {{ getAvatarEmoji(currentUser.avatar_id) }}
+                        </div>
+                        <div class="user-meta">
+                            <h3>{{ currentUser.username }}</h3>
+                            <div class="user-status-text">
+                                <span class="status-dot-green"></span>
+                                <span>Online</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="header-actions">
+                        <!-- PWA Install Button (Displays when available) -->
+                        <button v-if="deferredPrompt" class="btn-icon-action" @click="installPWA" title="Install App">
+                            📱 Install
+                        </button>
+                        <a href="/logout/" class="btn-icon-action" title="Log out">
+                            🚪
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Live User Search Box -->
+                <div class="search-container">
+                    <span class="search-icon-svg">🔍</span>
+                    <input 
+                        type="text" 
+                        class="search-input" 
+                        v-model="searchQuery" 
+                        @input="handleSearchInput" 
+                        placeholder="Search users to message..."
+                    >
+
+                    <!-- Search Dropdown Results -->
+                    <div v-if="searchResults.length > 0" class="search-dropdown">
+                        <div 
+                            v-for="user in searchResults" 
+                            :key="user.id" 
+                            class="search-item" 
+                            @click="startDirectMessage(user)"
+                        >
+                            <div class="avatar-circle" style="width: 32px; height: 32px; font-size: 0.95rem;" :style="getAvatarBg(user.avatar_id)">
+                                {{ getAvatarEmoji(user.avatar_id) }}
+                            </div>
+                            <div class="search-item-info">
+                                <div class="search-item-name">{{ user.username }}</div>
+                                <div class="search-item-sub">{{ user.email }}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Navigation Tabs: DMs vs Groups -->
+                <div class="conv-tabs">
+                    <button 
+                        class="conv-tab-btn" 
+                        :class="{ active: activeTab === 'dms' }" 
+                        @click="activeTab = 'dms'"
+                    >
+                        💬 Direct Messages ({{ dms.length }})
+                    </button>
+                    <button 
+                        class="conv-tab-btn" 
+                        :class="{ active: activeTab === 'groups' }" 
+                        @click="activeTab = 'groups'"
+                    >
+                        👥 Groups ({{ groups.length }})
+                    </button>
+                </div>
+
+                <!-- Group Actions Bar (When Groups tab is active) -->
+                <div v-if="activeTab === 'groups'" class="group-actions-bar">
+                    <span>Chat Groups</span>
+                    <button class="btn-new-group" @click="showCreateGroupModal = true">
+                        + New Group
+                    </button>
+                </div>
+
+                <!-- Conversation List -->
+                <ul class="conv-list">
+                    <!-- Direct Messages Tab List -->
+                    <template v-if="activeTab === 'dms'">
+                        <li v-if="dms.length === 0" style="padding: 24px 16px; text-align: center; color: #64748b; font-size: 0.85rem;">
+                            No direct messages yet.<br>Use the search bar above to message someone!
+                        </li>
+                        <li 
+                            v-for="dm in dms" 
+                            :key="dm.id" 
+                            class="conv-item" 
+                            :class="{ active: activeConv && activeConv.id === dm.id }" 
+                            @click="selectConversation(dm)"
+                        >
+                            <div class="avatar-circle" style="width: 38px; height: 38px; font-size: 1.1rem;" :style="getAvatarBg(dm.avatar_id)">
+                                {{ getAvatarEmoji(dm.avatar_id) }}
+                            </div>
+                            <div class="conv-item-content">
+                                <div class="conv-item-top">
+                                    <span class="conv-item-name">{{ dm.name }}</span>
+                                    <span class="conv-item-time">{{ dm.last_time }}</span>
+                                </div>
+                                <div class="conv-item-last">{{ dm.last_message }}</div>
+                            </div>
+                        </li>
+                    </template>
+
+                    <!-- Groups Tab List -->
+                    <template v-if="activeTab === 'groups'">
+                        <li 
+                            v-for="group in groups" 
+                            :key="group.id" 
+                            class="conv-item" 
+                            :class="{ active: activeConv && activeConv.id === group.id }" 
+                            @click="selectConversation(group)"
+                        >
+                            <div class="avatar-circle" style="width: 38px; height: 38px; font-size: 1.1rem; background: linear-gradient(135deg, #0284c7, #2563eb);">
+                                #
+                            </div>
+                            <div class="conv-item-content">
+                                <div class="conv-item-top">
+                                    <span class="conv-item-name">
+                                        {{ group.name }}
+                                        <span v-if="group.is_creator" class="creator-tag">Owner</span>
+                                    </span>
+                                    <span class="conv-item-time">{{ group.last_time }}</span>
+                                </div>
+                                <div class="conv-item-last">{{ group.last_message }}</div>
+                            </div>
+                        </li>
+                    </template>
+                </ul>
+            </aside>
+
+            <!-- ===========================================================
+                 RIGHT MAIN CHAT PANE
+                 =========================================================== -->
+            <main class="chat-pane" :class="{ 'mobile-open': isMobileChatOpen }">
+                <!-- If conversation is selected -->
+                <template v-if="activeConv">
+                    <!-- Chat Header -->
+                    <header class="chat-pane-header">
+                        <div class="chat-header-left">
+                            <button class="btn-back-sidebar" @click="isMobileChatOpen = false" title="Back to chats">
+                                &larr;
+                            </button>
+                            <div class="chat-header-avatar" :style="activeConv.is_group ? 'background: linear-gradient(135deg, #0284c7, #2563eb)' : getAvatarBg(activeConv.avatar_id)">
+                                {{ activeConv.is_group ? '#' : getAvatarEmoji(activeConv.avatar_id) }}
+                            </div>
+                            <div class="chat-header-meta">
+                                <div class="chat-header-title">
+                                    <span class="chat-header-name">{{ activeConv.name }}</span>
+                                    <span v-if="activeConv.is_group && activeConv.is_creator" class="creator-badge" title="You created this group">👑 Owner</span>
+                                </div>
+                                <div class="chat-header-sub">
+                                    <span v-if="activeConv.is_group">
+                                        {{ (activeConv.members ? activeConv.members.length : (activeConv.member_count || 1)) }} members &bull; by {{ activeConv.created_by }}
+                                    </span>
+                                    <span v-else>Direct conversation</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Header Right Actions: View Members + Creator Delete -->
+                        <div class="chat-header-right">
+                            <!-- VIEW MEMBERS PILL BUTTON -->
+                            <button 
+                                class="btn-header-pill btn-members-pill" 
+                                @click="showMembersModal = true" 
+                                title="View conversation members"
+                            >
+                                <span>👥</span>
+                                <span>{{ activeConv.members ? activeConv.members.length : (activeConv.member_count || 1) }}</span>
+                                <span class="pill-label">Members</span>
+                            </button>
+
+                            <!-- CREATOR-ONLY GROUP DELETION BUTTON -->
+                            <button 
+                                v-if="activeConv.is_group && activeConv.is_creator" 
+                                class="btn-header-pill btn-delete-pill" 
+                                @click="confirmDeleteGroup" 
+                                title="Permanently delete this group"
+                            >
+                                <span>🗑️</span>
+                                <span class="pill-label">Delete</span>
+                            </button>
+                        </div>
+                    </header>
+
+                    <!-- Message Stream (Last 100 Messages from SQLite + Real-time) -->
+                    <div class="messages-area" ref="messagesContainer">
+                        <div v-if="messages.length === 0" class="empty-chat-placeholder">
+                            <p>No messages yet. Send the first message!</p>
+                        </div>
+
+                        <div 
+                            v-for="msg in messages" 
+                            :key="msg.id || msg.timestamp" 
+                            class="message-row" 
+                            :class="msg.is_me ? 'outgoing' : 'incoming'"
+                        >
+                            <div v-if="!msg.is_me" class="msg-avatar" :style="getAvatarBg(msg.avatar_id)">
+                                {{ getAvatarEmoji(msg.avatar_id) }}
+                            </div>
+                            <div class="msg-content-wrapper">
+                                <span v-if="!msg.is_me && activeConv.is_group" class="msg-sender-name">
+                                    {{ msg.sender }}
+                                </span>
+                                <div class="msg-bubble">
+                                    {{ msg.text }}
+                                    <div class="msg-time">{{ msg.timestamp }}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Input Footer -->
+                    <footer class="chat-input-bar">
+                        <input 
+                            type="text" 
+                            class="chat-input-field" 
+                            v-model="newMessage" 
+                            @keydown.enter.prevent="sendMessage"
+                            :placeholder="'Message ' + (activeConv.is_group ? '#' + activeConv.name : activeConv.name) + '...'"
+                            ref="inputField"
+                        >
+                        <button 
+                            class="btn-send-message" 
+                            @click="sendMessage" 
+                            :disabled="!newMessage.trim()"
+                        >
+                            Send &rarr;
+                        </button>
+                    </footer>
+                </template>
+
+                <!-- No Conversation Selected Empty State -->
+                <div v-else style="margin: auto; text-align: center; color: #64748b; padding: 20px;">
+                    <div style="font-size: 3rem; margin-bottom: 12px;">💬</div>
+                    <h3 style="color: #f8fafc; margin-bottom: 8px;">Welcome to Tuko Chat</h3>
+                    <p style="font-size: 0.95rem;">Select a group or search for a user to start chatting.</p>
+                </div>
+            </main>
+        </div>
+
+        <!-- ===============================================================
+             CREATE GROUP MODAL
+             =============================================================== -->
+        <div v-if="showCreateGroupModal" class="modal-backdrop" @click.self="showCreateGroupModal = false">
+            <div class="modal-card">
+                <div class="modal-header">
+                    <h3>Create New Group</h3>
+                    <button class="btn-modal-close" @click="showCreateGroupModal = false">&times;</button>
+                </div>
+                <form @submit.prevent="createGroup">
+                    <div style="margin-bottom: 16px;">
+                        <label style="display: block; font-size: 0.8rem; font-weight: 600; color: #94a3b8; margin-bottom: 6px;">
+                            GROUP NAME
+                        </label>
+                        <input 
+                            type="text" 
+                            v-model.trim="newGroupName" 
+                            class="chat-input-field" 
+                            style="width: 100%;" 
+                            placeholder="e.g. Gamers, Football Club, Work" 
+                            required 
+                            autofocus
+                        >
+                    </div>
+                    <div style="display: flex; justify-content: flex-end; gap: 8px;">
+                        <button type="button" class="btn-icon-action" @click="showCreateGroupModal = false">Cancel</button>
+                        <button type="submit" class="btn-new-group" style="padding: 8px 16px;">Create Group</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- ===============================================================
+             MEMBERS MODAL / DRAWER
+             =============================================================== -->
+        <div v-if="showMembersModal" class="modal-backdrop" @click.self="showMembersModal = false">
+            <div class="members-modal-card">
+                <div class="members-modal-header">
+                    <div>
+                        <h3 style="margin: 0; font-size: 1.05rem; color: #f8fafc; font-weight: 700;">
+                            Conversation Members
+                        </h3>
+                        <div style="font-size: 0.78rem; color: #94a3b8; margin-top: 3px;">
+                            {{ activeConv ? (activeConv.is_group ? '#' + activeConv.name : activeConv.name) : '' }} &bull; {{ (activeConv && activeConv.members) ? activeConv.members.length : (activeConv ? activeConv.member_count : 1) }} participants
+                        </div>
+                    </div>
+                    <button class="btn-modal-close" @click="showMembersModal = false">&times;</button>
+                </div>
+
+                <div class="members-modal-body">
+                    <div 
+                        v-for="member in ((activeConv && activeConv.members) ? activeConv.members : [])" 
+                        :key="member.id" 
+                        class="member-row-card"
+                    >
+                        <div class="avatar-circle" style="width: 36px; height: 36px; font-size: 1.05rem;" :style="getAvatarBg(member.avatar_id)">
+                            {{ getAvatarEmoji(member.avatar_id) }}
+                        </div>
+                        <div class="member-info-col">
+                            <div class="member-name-row">
+                                <span class="member-username">{{ member.username }}</span>
+                                <span v-if="member.is_me" class="member-badge-pill you">You</span>
+                                <span v-if="member.is_creator" class="member-badge-pill owner">👑 Owner</span>
+                            </div>
+                            <div class="member-status-line">
+                                <span class="status-indicator-dot online"></span>
+                                <span>Active participant</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="padding: 12px 18px; border-top: 1px solid #334155; display: flex; justify-content: flex-end; background: rgba(15, 23, 42, 0.4);">
+                    <button type="button" class="btn-icon-action" style="padding: 6px 16px;" @click="showMembersModal = false">Close</button>
+                </div>
+            </div>
+        </div>
+        {% endverbatim %}
+    </div>
+
+    <!-- Inject initial user metadata -->
+    <script>
+        const CURRENT_USER = {
+            id: {{ user.id }},
+            username: "{{ user.username }}",
+            email: "{{ user.email }}",
+            avatar_id: "{{ profile.avatar_id|default:'avatar_1' }}"
+        };
+    </script>
+
+    <!-- Vue 3 Application Controller -->
+    <script>
+        const { createApp, ref, onMounted, nextTick } = Vue;
+
+        createApp({
+            setup() {
+                const currentUser = ref(CURRENT_USER);
+                const activeTab = ref('groups'); // 'groups' | 'dms'
+                const groups = ref([]);
+                const dms = ref([]);
+                const activeConv = ref(null);
+                const messages = ref([]);
+                const newMessage = ref('');
+                const searchQuery = ref('');
+                const searchResults = ref([]);
+                const isMobileChatOpen = ref(false);
+                const showCreateGroupModal = ref(false);
+                const showMembersModal = ref(false);
+                const newGroupName = ref('');
+                const messagesContainer = ref(null);
+                const inputField = ref(null);
+                const deferredPrompt = ref(null);
+                let socket = null;
+                let searchTimeout = null;
+
+                // Avatar Presets mapping
+                const AVATARS = {
+                    avatar_1: { emoji: '🦁', bg: 'linear-gradient(135deg, #3b82f6, #1d4ed8)' },
+                    avatar_2: { emoji: '🦅', bg: 'linear-gradient(135deg, #10b981, #047857)' },
+                    avatar_3: { emoji: '⚡', bg: 'linear-gradient(135deg, #8b5cf6, #6d28d9)' },
+                    avatar_4: { emoji: '🔥', bg: 'linear-gradient(135deg, #f59e0b, #b45309)' },
+                    avatar_5: { emoji: '👑', bg: 'linear-gradient(135deg, #ec4899, #be185d)' },
+                    avatar_6: { emoji: '🚀', bg: 'linear-gradient(135deg, #06b6d4, #0e7490)' },
+                    avatar_7: { emoji: '🎯', bg: 'linear-gradient(135deg, #f97316, #c2410c)' },
+                    avatar_8: { emoji: '💎', bg: 'linear-gradient(135deg, #6366f1, #4338ca)' },
+                };
+
+                const getAvatarEmoji = (id) => (AVATARS[id] || AVATARS.avatar_1).emoji;
+                const getAvatarBg = (id) => ({ background: (AVATARS[id] || AVATARS.avatar_1).bg });
+
+                const scrollToBottom = async () => {
+                    await nextTick();
+                    if (messagesContainer.value) {
+                        messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight;
+                    }
+                };
+
+                // Fetch conversation list from backend
+                const loadConversations = async () => {
+                    try {
+                        const res = await fetch('/api/conversations/');
+                        const data = await res.json();
+                        groups.value = data.groups || [];
+                        dms.value = data.dms || [];
+
+                        // Default select first group if none active
+                        if (!activeConv.value && groups.value.length > 0) {
+                            selectConversation(groups.value[0]);
+                        }
+                    } catch (e) {
+                        console.error('Error loading conversations:', e);
+                    }
+                };
+
+                // Select a conversation and connect WebSocket
+                const selectConversation = async (conv) => {
+                    activeConv.value = { ...conv };
+                    isMobileChatOpen.value = true;
+                    messages.value = [];
+
+                    // 1. Fetch persistent history from SQLite (up to 100 messages) and member list
+                    try {
+                        const res = await fetch(`/api/conversations/${conv.id}/messages/`);
+                        const data = await res.json();
+                        messages.value = data.messages || [];
+                        activeConv.value.is_creator = data.is_creator;
+                        activeConv.value.created_by = data.created_by;
+                        activeConv.value.member_count = data.member_count;
+                        activeConv.value.members = data.members || [];
+                        scrollToBottom();
+                    } catch (e) {
+                        console.error('Error fetching messages:', e);
+                    }
+
+                    // 2. Connect WebSocket
+                    connectWebSocket(conv.id);
+
+                    if (inputField.value) inputField.value.focus();
+                };
+
+                // Connect WebSocket to conversation
+                const connectWebSocket = (convId) => {
+                    if (socket) {
+                        socket.close();
+                    }
+
+                    const wsScheme = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
+                    const wsUrl = `${wsScheme}${window.location.host}/ws/conversation/${convId}/`;
+
+                    socket = new WebSocket(wsUrl);
+
+                    socket.onmessage = (event) => {
+                        try {
+                            const data = JSON.parse(event.data);
+                            if (data.type === 'chat_message') {
+                                messages.value.push({
+                                    id: Date.now(),
+                                    sender: data.sender,
+                                    avatar_id: data.avatar_id,
+                                    is_me: data.sender === currentUser.value.username,
+                                    text: data.message,
+                                    timestamp: data.timestamp
+                                });
+                                // Keep member list synchronized in real time
+                                if (activeConv.value && activeConv.value.members && !activeConv.value.members.some(m => m.username === data.sender)) {
+                                    activeConv.value.members.push({
+                                        id: Date.now(),
+                                        username: data.sender,
+                                        avatar_id: data.avatar_id || 'avatar_1',
+                                        is_creator: false,
+                                        is_me: data.sender === currentUser.value.username
+                                    });
+                                }
+                                scrollToBottom();
+                            } else if (data.type === 'group_deleted') {
+                                alert(`Group '${data.group_name}' was deleted by its creator (${data.deleted_by}).`);
+                                activeConv.value = null;
+                                isMobileChatOpen.value = false;
+                                loadConversations();
+                            }
+                        } catch (err) {
+                            console.error('WS parse error:', err);
+                        }
+                    };
+                };
+
+                // Send a new message
+                const sendMessage = () => {
+                    const text = newMessage.value.trim();
+                    if (!text || !socket || socket.readyState !== WebSocket.OPEN) return;
+
+                    socket.send(JSON.stringify({
+                        type: 'chat_message',
+                        message: text
+                    }));
+
+                    newMessage.value = '';
+                    if (inputField.value) inputField.value.focus();
+                };
+
+                // Search registered users
+                const handleSearchInput = () => {
+                    clearTimeout(searchTimeout);
+                    const q = searchQuery.value.trim();
+                    if (!q) {
+                        searchResults.value = [];
+                        return;
+                    }
+                    searchTimeout = setTimeout(async () => {
+                        try {
+                            const res = await fetch(`/api/users/search/?q=${encodeURIComponent(q)}`);
+                            const data = await res.json();
+                            searchResults.value = data.users || [];
+                        } catch (e) {
+                            console.error('Search error:', e);
+                        }
+                    }, 250);
+                };
+
+                // Start or open a 1-on-1 DM with searched user
+                const startDirectMessage = async (user) => {
+                    searchQuery.value = '';
+                    searchResults.value = [];
+
+                    try {
+                        const res = await fetch('/api/dm/start/', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRFToken': getCookie('csrftoken')
+                            },
+                            body: JSON.stringify({ target_user_id: user.id })
+                        });
+                        const data = await res.json();
+                        await loadConversations();
+                        activeTab.value = 'dms';
+
+                        const matched = dms.value.find(d => d.id === data.id);
+                        if (matched) {
+                            selectConversation(matched);
+                        }
+                    } catch (e) {
+                        console.error('Start DM error:', e);
+                    }
+                };
+
+                // Create a new user-owned chat group
+                const createGroup = async () => {
+                    const name = newGroupName.value.trim();
+                    if (!name) return;
+
+                    try {
+                        const res = await fetch('/api/groups/create/', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRFToken': getCookie('csrftoken')
+                            },
+                            body: JSON.stringify({ name: name })
+                        });
+                        const data = await res.json();
+                        newGroupName.value = '';
+                        showCreateGroupModal.value = false;
+                        await loadConversations();
+                        activeTab.value = 'groups';
+
+                        const matched = groups.value.find(g => g.id === data.id);
+                        if (matched) {
+                            selectConversation(matched);
+                        }
+                    } catch (e) {
+                        console.error('Create group error:', e);
+                    }
+                };
+
+                // Creator-only Delete Group
+                const confirmDeleteGroup = async () => {
+                    if (!activeConv.value || !activeConv.value.is_group) return;
+                    const confirmed = confirm(`Are you sure you want to permanently delete the group '${activeConv.value.name}'? All messages will be wiped.`);
+                    if (!confirmed) return;
+
+                    try {
+                        const res = await fetch(`/api/groups/${activeConv.value.id}/delete/`, {
+                            method: 'POST',
+                            headers: {
+                                'X-CSRFToken': getCookie('csrftoken')
+                            }
+                        });
+                        const data = await res.json();
+                        if (data.success) {
+                            activeConv.value = null;
+                            isMobileChatOpen.value = false;
+                            await loadConversations();
+                        } else {
+                            alert(data.error || 'Failed to delete group');
+                        }
+                    } catch (e) {
+                        console.error('Delete group error:', e);
+                    }
+                };
+
+                // Helper to retrieve CSRF token
+                const getCookie = (name) => {
+                    let cookieValue = null;
+                    if (document.cookie && document.cookie !== '') {
+                        const cookies = document.cookie.split(';');
+                        for (let i = 0; i < cookies.length; i++) {
+                            const cookie = cookies[i].trim();
+                            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                                break;
+                            }
+                        }
+                    }
+                    return cookieValue;
+                };
+
+                // PWA Install Prompt handling
+                const installPWA = async () => {
+                    if (!deferredPrompt.value) return;
+                    deferredPrompt.value.prompt();
+                    const { outcome } = await deferredPrompt.value.userChoice;
+                    if (outcome === 'accepted') {
+                        deferredPrompt.value = null;
+                    }
+                };
+
+                onMounted(() => {
+                    loadConversations();
+
+                    // Register Service Worker for PWA
+                    if ('serviceWorker' in navigator) {
+                        navigator.serviceWorker.register('/static/chat/sw.js').catch(err => {
+                            console.log('ServiceWorker registration failed: ', err);
+                        });
+                    }
+
+                    // Capture PWA installation prompt
+                    window.addEventListener('beforeinstallprompt', (e) => {
+                        e.preventDefault();
+                        deferredPrompt.value = e;
+                    });
+                });
+
+                return {
+                    currentUser,
+                    activeTab,
+                    groups,
+                    dms,
+                    activeConv,
+                    messages,
+                    newMessage,
+                    searchQuery,
+                    searchResults,
+                    isMobileChatOpen,
+                    showCreateGroupModal,
+                    showMembersModal,
+                    newGroupName,
+                    messagesContainer,
+                    inputField,
+                    deferredPrompt,
+                    getAvatarEmoji,
+                    getAvatarBg,
+                    selectConversation,
+                    sendMessage,
+                    handleSearchInput,
+                    startDirectMessage,
+                    createGroup,
+                    confirmDeleteGroup,
+                    installPWA
+                };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>

@@ -1,0 +1,332 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Tuko Chat | Login & Sign Up</title>
+    <!-- PWA Meta Tags -->
+    <link rel="manifest" href="{% static 'chat/manifest.json' %}">
+    <meta name="theme-color" content="#0f172a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="stylesheet" href="{% static 'chat/style.css' %}?v=7">
+
+    <style>
+        .auth-wrapper {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            background: #0f172a;
+        }
+        .auth-container {
+            width: 100%;
+            max-width: 460px;
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.6);
+            overflow: hidden;
+        }
+        .auth-header {
+            padding: 30px 24px 20px 24px;
+            text-align: center;
+            border-bottom: 1px solid #334155;
+            background: rgba(15, 23, 42, 0.4);
+        }
+        .auth-title {
+            font-size: 1.85rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #38bdf8 0%, #818cf8 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 6px;
+        }
+        .auth-subtitle {
+            color: #94a3b8;
+            font-size: 0.88rem;
+        }
+        .auth-tabs {
+            display: flex;
+            background: #0f172a;
+            border-bottom: 1px solid #334155;
+        }
+        .auth-tab {
+            flex: 1;
+            padding: 14px 10px;
+            text-align: center;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #64748b;
+            text-decoration: none;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+        }
+        .auth-tab.active {
+            color: #38bdf8;
+            border-bottom-color: #38bdf8;
+            background: rgba(30, 41, 59, 0.5);
+        }
+        .auth-tab:hover:not(.active) {
+            color: #94a3b8;
+        }
+        .auth-body {
+            padding: 28px 24px;
+        }
+        .form-group {
+            margin-bottom: 18px;
+        }
+        .form-label {
+            display: block;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: #94a3b8;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .form-input {
+            width: 100%;
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 10px;
+            padding: 12px 14px;
+            color: #f8fafc;
+            font-size: 0.95rem;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .form-input:focus {
+            border-color: #38bdf8;
+            box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15);
+        }
+        .btn-submit {
+            width: 100%;
+            background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
+            color: #ffffff;
+            border: none;
+            border-radius: 10px;
+            padding: 14px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 10px;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+            transition: opacity 0.2s, transform 0.1s;
+        }
+        .btn-submit:hover {
+            opacity: 0.95;
+            transform: translateY(-1px);
+        }
+        .btn-submit:active {
+            transform: translateY(0);
+        }
+        .banner {
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 0.88rem;
+            margin-bottom: 18px;
+            text-align: left;
+        }
+        .banner-error {
+            background: rgba(239, 68, 68, 0.15);
+            border: 1px solid #ef4444;
+            color: #fca5a5;
+        }
+        .banner-success {
+            background: rgba(34, 197, 94, 0.15);
+            border: 1px solid #22c55e;
+            color: #86efac;
+        }
+        .auth-footer-links {
+            margin-top: 18px;
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85rem;
+        }
+        .auth-footer-links a {
+            color: #38bdf8;
+            text-decoration: none;
+        }
+        .auth-footer-links a:hover {
+            text-decoration: underline;
+        }
+        /* Avatar Preset Picker */
+        .avatar-picker-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-top: 8px;
+        }
+        .avatar-option {
+            aspect-ratio: 1;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: #ffffff;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: transform 0.15s, border-color 0.15s;
+            user-select: none;
+        }
+        .avatar-option:hover {
+            transform: scale(1.08);
+        }
+        .avatar-option.selected {
+            border-color: #38bdf8;
+            box-shadow: 0 0 12px rgba(56, 189, 248, 0.6);
+            transform: scale(1.1);
+        }
+    </style>
+</head>
+<body>
+    <div class="auth-wrapper">
+        <div class="auth-container">
+            <div class="auth-header">
+                <div class="auth-title">⚡ Tuko Chat</div>
+                <div class="auth-subtitle">Real-time messaging platform & groups</div>
+            </div>
+
+            <!-- Tab Navigation -->
+            <div class="auth-tabs">
+                <a href="{% url 'chat:login' %}" class="auth-tab {% if active_tab == 'login' %}active{% endif %}">Sign In</a>
+                <a href="{% url 'chat:register' %}" class="auth-tab {% if active_tab == 'register' %}active{% endif %}">Create Account</a>
+                {% if active_tab == 'forgot' %}
+                <span class="auth-tab active">Reset Password</span>
+                {% endif %}
+            </div>
+
+            <div class="auth-body">
+                {% if error_message %}
+                <div class="banner banner-error">{{ error_message }}</div>
+                {% endif %}
+
+                {% if success_message %}
+                <div class="banner banner-success">{{ success_message }}</div>
+                {% endif %}
+
+                <!-- ======================================================= -->
+                <!-- SIGN IN TAB (Supports Username OR Email) -->
+                <!-- ======================================================= -->
+                {% if active_tab == 'login' %}
+                <form method="POST" action="{% url 'chat:login' %}">
+                    {% csrf_token %}
+                    <div class="form-group">
+                        <label class="form-label" for="login_id">Username or Email</label>
+                        <input type="text" id="login_id" name="login_id" class="form-input" placeholder="e.g. brian or brian@gmail.com" required autofocus>
+                    </div>
+
+                    <div class="form-group">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                            <label class="form-label" for="password" style="margin-bottom: 0;">Password</label>
+                            <a href="{% url 'chat:forgot_password' %}" style="font-size: 0.78rem; color: #38bdf8; text-decoration: none;">Forgot Password?</a>
+                        </div>
+                        <input type="password" id="password" name="password" class="form-input" placeholder="Enter your password" required>
+                    </div>
+
+                    <button type="submit" class="btn-submit">Sign In &rarr;</button>
+                </form>
+
+                <div class="auth-footer-links" style="justify-content: center; margin-top: 22px;">
+                    <span style="color: #64748b;">Don't have an account?</span>
+                    &nbsp;<a href="{% url 'chat:register' %}">Create one free</a>
+                </div>
+
+                <!-- ======================================================= -->
+                <!-- SIGN UP TAB -->
+                <!-- ======================================================= -->
+                {% elif active_tab == 'register' %}
+                <form method="POST" action="{% url 'chat:register' %}" id="registerForm">
+                    {% csrf_token %}
+                    <input type="hidden" name="avatar_id" id="selectedAvatar" value="avatar_1">
+
+                    <div class="form-group">
+                        <label class="form-label" for="username">Username</label>
+                        <input type="text" id="username" name="username" class="form-input" placeholder="Unique username (e.g. player1)" maxlength="25" required autofocus>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="email">Email Address</label>
+                        <input type="email" id="email" name="email" class="form-input" placeholder="name@domain.com (for password recovery)" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="password">Password</label>
+                        <input type="password" id="password" name="password" class="form-input" placeholder="At least 6 characters" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="confirm_password">Confirm Password</label>
+                        <input type="password" id="confirm_password" name="confirm_password" class="form-input" placeholder="Re-type password" required>
+                    </div>
+
+                    <!-- Preset Avatar Selector -->
+                    <div class="form-group">
+                        <label class="form-label">Choose Your Avatar</label>
+                        <div class="avatar-picker-grid">
+                            <div class="avatar-option selected" data-avatar="avatar_1" style="background: linear-gradient(135deg, #3b82f6, #1d4ed8);">🦁</div>
+                            <div class="avatar-option" data-avatar="avatar_2" style="background: linear-gradient(135deg, #10b981, #047857);">🦅</div>
+                            <div class="avatar-option" data-avatar="avatar_3" style="background: linear-gradient(135deg, #8b5cf6, #6d28d9);">⚡</div>
+                            <div class="avatar-option" data-avatar="avatar_4" style="background: linear-gradient(135deg, #f59e0b, #b45309);">🔥</div>
+                            <div class="avatar-option" data-avatar="avatar_5" style="background: linear-gradient(135deg, #ec4899, #be185d);">👑</div>
+                            <div class="avatar-option" data-avatar="avatar_6" style="background: linear-gradient(135deg, #06b6d4, #0e7490);">🚀</div>
+                            <div class="avatar-option" data-avatar="avatar_7" style="background: linear-gradient(135deg, #f97316, #c2410c);">🎯</div>
+                            <div class="avatar-option" data-avatar="avatar_8" style="background: linear-gradient(135deg, #6366f1, #4338ca);">💎</div>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn-submit">Complete Registration &rarr;</button>
+                </form>
+
+                <div class="auth-footer-links" style="justify-content: center; margin-top: 22px;">
+                    <span style="color: #64748b;">Already have an account?</span>
+                    &nbsp;<a href="{% url 'chat:login' %}">Sign in</a>
+                </div>
+
+                <!-- ======================================================= -->
+                <!-- FORGOT PASSWORD TAB -->
+                <!-- ======================================================= -->
+                {% elif active_tab == 'forgot' %}
+                <form method="POST" action="{% url 'chat:forgot_password' %}">
+                    {% csrf_token %}
+                    <p style="color: #94a3b8; font-size: 0.9rem; margin-bottom: 18px; line-height: 1.5;">
+                        Enter your account email. We will send you a secure link to reset your password via <strong>Brevo</strong>.
+                    </p>
+
+                    <div class="form-group">
+                        <label class="form-label" for="email">Account Email Address</label>
+                        <input type="email" id="email" name="email" class="form-input" placeholder="e.g. yourname@gmail.com" required autofocus>
+                    </div>
+
+                    <button type="submit" class="btn-submit">Send Password Reset Link &rarr;</button>
+                </form>
+
+                <div class="auth-footer-links" style="justify-content: center; margin-top: 22px;">
+                    <a href="{% url 'chat:login' %}">&larr; Back to Sign In</a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Avatar selection interaction
+        document.querySelectorAll('.avatar-option').forEach(el => {
+            el.addEventListener('click', () => {
+                document.querySelectorAll('.avatar-option').forEach(item => item.classList.remove('selected'));
+                el.classList.add('selected');
+                const avatarInput = document.getElementById('selectedAvatar');
+                if (avatarInput) {
+                    avatarInput.value = el.dataset.avatar;
+                }
+            });
+        });
+    </script>
+</body>
+</html>

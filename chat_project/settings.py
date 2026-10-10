@@ -16,6 +16,16 @@ from pathlib import Path
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# Load local .env file if present
+_env_file = BASE_DIR / '.env'
+if _env_file.exists():
+    with open(_env_file, 'r', encoding='utf-8') as _f:
+        for _line in _f:
+            _line = _line.strip()
+            if _line and not _line.startswith('#') and '=' in _line:
+                _k, _v = _line.split('=', 1)
+                os.environ.setdefault(_k.strip(), _v.strip())
+
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/
@@ -129,14 +139,25 @@ STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 
-# Email
-# https://docs.djangoproject.com/en/6.1/topics/email/#topic-email-configuration
+# Authentication Backends (Support login with either Email OR Username)
+AUTHENTICATION_BACKENDS = [
+    'chat.backends.EmailOrUsernameModelBackend',
+    'django.contrib.auth.backends.ModelBackend',
+]
 
-MAILERS = {
-    'default': {
-        'BACKEND': 'django.core.mail.backends.console.EmailBackend',
-    },
-}
+LOGIN_URL = 'chat:login'
+LOGIN_REDIRECT_URL = 'chat:dashboard'
+LOGOUT_REDIRECT_URL = 'chat:login'
+
+# Email Configuration (Brevo SMTP Relay)
+# https://docs.djangoproject.com/en/6.1/topics/email/
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp-relay.brevo.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = os.environ.get('BREVO_SMTP_LOGIN', 'bd87da001@smtp-brevo.com')
+EMAIL_HOST_PASSWORD = os.environ.get('BREVO_SMTP_KEY', '')
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'Tuko Chat <briankuriasupport@gmail.com>')
 
 
 # Channel Layers (Inter-process and WebSocket group communication)
